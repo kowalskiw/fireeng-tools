@@ -1,21 +1,25 @@
-# sif-tools
-Simple tools for fire structural engineering, which I use to make the design process easier.
+# fireeng-tools
 
-Most of them are intended to be used with SAFIR® - fire structural code by University of Liege, Belgium.
-Those scripts are not a part of the software. Neverthless, some can be used generally to structural fire modelling. Feel free to use them as you want and don't forget to share your ideas here.
-I would greatly appreciate any suggestions and contribution of any kind.
+Scripts in this repository were written to support fire safety engineers with their
+computer work.
+Most of them are created to handle computer modelling of fire, evacuation and structures in more efficient way.
 
-This repository will be extended with new scripts and ideas.
-
-
-
-* `get_in.py` - picking IN files from GiD catalogues adn putting them into one directory;
-
-* `section_temp.py` - calculating mean temperature from TEM results;
-
-* `area2lineload.py` - changing area load to distributed beam load.
+Scripts are grouped with categories, as listed below. Some of them use
+each other as an external packages. Thus, it is recommended to clone or download
+whole repository.
 
 
-Link to SAFIR® official website: https://www.uee.uliege.be/cms/c_4016386/en/safir
+* `sif-tools` - structural fire engineering with SAFIR®, pre and postprocessing, simulations running;
+
+* `evacuation` - pre and postprocessing of evacuation simulations with Pathfinder/FDS+Evac;
+
+* `CFD` - postprocessing of CFD fire simulations with FDS.
+
+
+This repository will be extended with new scripts and ideas soon.
+
+Feel free to use them at your own risk in any way you want. Please, 
+don't forget to share your ideas here by pull requests or reporting issues.
+Any suggestions and contribution of any kind would be very appreciated.
 
 
