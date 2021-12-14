@@ -12,6 +12,8 @@ Those scripts are not a part of the software. Neverthless, some can be used gene
 
 * `area2lineload.py` - changing area load to distributed beam load
 
+* `iso2nf.py` - converting ISO heating to natural fire (LOCAFI, HASEMI, CFD), running natural fire simulations for BEAM and SHELL elements
+
 
 Link to SAFIR® official website: https://www.uee.uliege.be/cms/c_4016386/en/safir
 
