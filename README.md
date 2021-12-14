@@ -9,7 +9,7 @@ each other as an external packages. Thus, it is recommended to clone or download
 whole repository.
 
 
-* `sif-tools` - structural fire engineering with SAFIR®, pre and postprocessing, simulations running;
+* `structures` - structural fire engineering with SAFIR®, pre and postprocessing, simulations running;
 
 * `evacuation` - pre and postprocessing of evacuation simulations with Pathfinder/FDS+Evac;
 
