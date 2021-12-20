@@ -120,3 +120,50 @@ class LoadFullXML(ReadXML):
         super().__init__(pathtoresults)
         # read all data
     pass
+
+
+def read_in(path):
+    with open(path) as file:
+        f = file.readlines()
+
+    # in the future add recognizing of analysis type
+    # type = s3d/t2d/tsh2d/t3d/s2d
+
+    return InFile(path.basename[:-3], f, type=None)
+
+
+class InFile:
+    def __init__(self, chid, file_lines, type=None):
+        self.file_lines = file_lines
+        self.chid = chid
+        self.type = 'type_of_analysis'
+        self.nodes = self.get(0)
+        self.beams = self.get(1)
+        self.shells = self.get(2)
+        self.solids = self.get(3)
+
+    # import entities
+    def get(self, entity_type):
+        got = [self.chid]
+        keys = []   # [start, element, end (tuple if many options possible)]
+
+        if entity_type in ['node', 'nodes', 'n', 0]:
+            keys = ['NODES', 'NODE', ['FIXATIONS']]
+        elif entity_type in ['beam', 'beams', 'b', 1]:
+            keys = ['NODOFBEAM', 'ELEM', ['NODOFSHELL', 'NODOFSOLID', 'PRECISION']]
+        elif entity_type in ['shell', 'shells', 'sh', 2]:
+            keys = ['NODOFSHELL', 'ELEM', ['NODOFBEAM', 'NODOFSOLID', 'PRECISION']]
+        elif entity_type in ['solid', 'solids', 'sd', 3]:
+            keys = ['NODOFSOLID', 'ELEM', ['NODOFBEAM', 'NODOFSHELL', 'PRECISION']]
+
+        read = False
+        for line in self.file_lines:
+            if keys[0] in line:
+                read = True
+            elif read and keys[1] in line:
+                got.append([int(i) for i in line.split()[1:]])  # first element of list is entity number
+            elif read and any(stop in line for stop in keys[2]):
+                break
+
+        return got
+
