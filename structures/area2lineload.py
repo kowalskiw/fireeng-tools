@@ -63,7 +63,7 @@ sh_template = ['Dummy file generated with area2lineload.py\n',
                'END_LOAD\n',
                ' MATERIALS\n',
                'STEELEC32D\n',
-               '           2.10e+11   3.00e-01   2.50e+10  1200.   0.\n',
+               '           9e+12   3.00e-01   9e+12  1200.   0.\n',
                'TIME\n',
                '1.0     10.0      \n',
                'ENDTIME\n',
@@ -288,9 +288,10 @@ def map_l2e(points: list, reactions: list[list[list]]):
         try:
             lineload = -interp(0, [-d1, d2], [to_inter[i][1][dof] for i in (0, 1)]) / length
         except TypeError:
-            print('Middle point of suspected beam: {}'.format(points[1]))
-            raise ValueError('[ERROR] Mapping load is not possible. Check if load\'s area geometries matches your beam '
-                             'structural model.')
+            return []
+            # print('Middle point of suspected beam: {}'.format(points[1]))
+            # raise ValueError('[ERROR] Mapping load is not possible. Check if load\'s area geometries matches your beam '
+            #                  'structural model.')
         e_load.append(lineload)
 
     return e_load
@@ -301,40 +302,43 @@ def gather_results(pathtodummies='.'):
     reac_data = []
     for s in scandir(pathtodummies):
         if all(i in s.name for i in ['XML', 'dummy']):
+            dum_reac = [s.name.split('_')[-1][:-4]]
             r = ReadXML(s.path)
             # [[node_no, R(node_no)_dof1,...,R(node_no)_dof7],...,[node_no, R(node_no)_dof1,...,R(node_no)_dof7]]
             reactions = r.reactions(-1)
             nodes = r.nodes()  # [[p1x,p1y,p1z],...,[pnx, pny, pnz]]
             for r in reactions:
-                reac_data.append([nodes[r[0]-1], r[1:]])    # convert node_no to its position in list
+                dum_reac.append([nodes[r[0]-1], r[1:]])    # convert node_no to its position in list
+            reac_data.append(dum_reac)
 
-    return reac_data  # [[p1: list(len=3), r1: list(len=NRDOF)], [p2, r2], ... [pn, rn]]
+    return reac_data  # [[dummy_no, [p1: list(len=3), r1: list(len=NRDOF)], [p2, r2], ... [pn, rn]]]
 
 
 # add new load data (lineloads) to the model (infile)
-def assign_loads(in_path: str, lineloads: list, pathtodir='.', function='F1'):
+def assign_loads(in_path: str, lineloads: list[list[list]], pathtodir='.', function='F1'):
     infile = read_in(in_path)
-
-    converted_loads = ['   FUNCTION {}\n'.format(function), '  END_LOAD\n']
+    lloaded = infile.file_lines
     load_template = ' DISTRBEAM    {}    {}    {}    {}\n'
 
-    # map beam elements to lineloads
-    for be in infile.beams:
-        # start, middle, end point of beam element like [x,y,z]
-        # convert node_no to its position in node list (-1)
-        points = [infile.nodes[int(i)-1] for i in be[1:4]]
+    # map beam elements to lineloads from each dummyfile
+    for dummy in lineloads:
+        converted_loads = ['   FUNCTION {}\n'.format(function), '  END_LOAD\n']
+        for be in infile.beams:
+            # start, middle, end point of beam element like [x,y,z]
+            # convert node_no to its position in node list (-1)
+            points = [infile.nodes[int(i)-1] for i in be[1:4]]
+            # for dummy in lineloads:
+            elem_loads = map_l2e(points, dummy[1:])
+            print(be[0], dummy[0], elem_loads)
+            converted_loads.insert(-1, load_template.format(be[0], *elem_loads)) if elem_loads else None
 
-        elem_loads = map_l2e(points, lineloads)
-        converted_loads.insert(-1, load_template.format(be[0], *elem_loads))
-
-    # make new IN file with line loads
-    lloaded = infile.file_lines
-    for l in lloaded:
-        if 'NLOAD' in l:
-            lloaded[lloaded.index(l)] = '     NLOAD    {}\n'.format(int(l.split()[-1]) + 1)
-        elif 'END_LOAD' in l:
-            lloaded = lloaded[:lloaded.index(l) + 1] + converted_loads + lloaded[lloaded.index(l) + 1:]
-            break
+        # make new IN file with line loads
+        for l in lloaded:
+            if 'NLOAD' in l:
+                lloaded[lloaded.index(l)] = '     NLOAD    {}\n'.format(int(l.split()[-1]) + 1)
+            elif 'END_LOAD' in l:
+                lloaded = lloaded[:lloaded.index(l) + 1] + converted_loads + lloaded[lloaded.index(l) + 1:]
+                break
 
     with open('{}\{}_ll.in'.format(pathtodir, infile.chid), 'w') as file:
         file.write(''.join(lloaded))
@@ -358,7 +362,6 @@ def main(pathtodir, pathtoinfile, pathtodxf):
 
     # postprocess of dummy simulations
     # read reactions from dummy results and save with coordinates of nodes
-    # done
     lineloads = gather_results(pathtodummies=pathtodir)
     # assign line loads to beams from IN file:
     # map2le TO BE DONE
