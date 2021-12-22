@@ -1,3 +1,4 @@
+import os
 import subprocess
 from os import getcwd, chdir
 
@@ -96,16 +97,15 @@ class ReadXML:
         return mnvs
 
     def nodes(self):
-        nodes = [None]
+        nodes = []
         point = []
         for node in self.doc.getElementsByTagName('NODES')[0].childNodes[1:-1:2]:
             if node.nodeName == 'N':
                 point = []
                 for p in node.childNodes[1:-1:2]:
-                    print(p)
                     point.append(p.firstChild.data)
 
-            nodes.append(point) if len(point) == 3 else None
+            nodes.append([float(coord) for coord in point]) if len(point) == 3 else None
 
         return nodes
 
@@ -129,7 +129,7 @@ def read_in(path):
     # in the future add recognizing of analysis type
     # type = s3d/t2d/tsh2d/t3d/s2d
 
-    return InFile(path.basename[:-3], f, type=None)
+    return InFile(basename(path)[:-3], f, type=None)
 
 
 class InFile:
@@ -144,24 +144,33 @@ class InFile:
 
     # import entities
     def get(self, entity_type):
-        got = [self.chid]
+        got = []
         keys = []   # [start, element, end (tuple if many options possible)]
 
         if entity_type in ['node', 'nodes', 'n', 0]:
             keys = ['NODES', 'NODE', ['FIXATIONS']]
+            entity_type = 0
         elif entity_type in ['beam', 'beams', 'b', 1]:
             keys = ['NODOFBEAM', 'ELEM', ['NODOFSHELL', 'NODOFSOLID', 'PRECISION']]
+            entity_type = 1
         elif entity_type in ['shell', 'shells', 'sh', 2]:
             keys = ['NODOFSHELL', 'ELEM', ['NODOFBEAM', 'NODOFSOLID', 'PRECISION']]
+            entity_type = 2
         elif entity_type in ['solid', 'solids', 'sd', 3]:
             keys = ['NODOFSOLID', 'ELEM', ['NODOFBEAM', 'NODOFSHELL', 'PRECISION']]
+            entity_type = 3
 
         read = False
         for line in self.file_lines:
             if keys[0] in line:
                 read = True
             elif read and keys[1] in line:
-                got.append([int(i) for i in line.split()[1:]])  # first element of list is entity number
+                lsplt = line.split()
+                if entity_type == 0:
+                    got.append([float(i) for i in lsplt[2:]])  # coordinates
+                    got[-1].insert(0, int(lsplt[1]))    # entity tag
+                else:
+                    got.append([int(i) for i in lsplt[1:]])  # entity tag and lower entities tags
             elif read and any(stop in line for stop in keys[2]):
                 break
 

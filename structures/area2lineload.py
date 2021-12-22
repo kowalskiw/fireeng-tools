@@ -30,22 +30,22 @@ from numpy import interp
 sh_template = ['Dummy file generated with area2lineload.py\n',
                'Check our github: kowalskiw/fireeng-tools!\n',
                '\n',
-               '     NNODE    ???\n', # here number of elements [-6]
+               '     NNODE    ???\n',  # here number of elements [-6]
                '      NDIM    3\n',
-               '   NDOFMAX    7\n'
-               '    NCORES    4\n'
-               '   STATICCOLD   APPR_NR\n'
-               '     NLOAD    3\n'
-               '   OBLIQUE    0 \n'
-               '  COMEBACK 0.0001\n'
-               '   NORENUM\n'
-               '      NMAT    1\n'
-               'ELEMENTS\n'
-               '     SHELL     ???     1\n'  # here number of elements [-5]
-               '   NGTHICK    8\n'
-               '    NGAREA    2\n'
-               '   NREBARS    0 \n'
-               '  END_ELEM\n'
+               '   NDOFMAX    7\n',
+               '    NCORES    4\n',
+               '   STATICCOLD   APPR_NR\n',
+               '     NLOAD    1\n',
+               '   OBLIQUE    0 \n',
+               '  COMEBACK 0.0001\n',
+               '   NORENUM\n',
+               '      NMAT    1\n',
+               'ELEMENTS\n',
+               '     SHELL     ???     1\n',  # here number of elements [-5]
+               '   NGTHICK    8\n',
+               '    NGAREA    2\n',
+               '   NREBARS    0 \n',
+               '  END_ELEM\n',
                '     NODES\n',
                '      ???',  # here all nodes generated [-4]
                ' FIXATIONS\n',
@@ -55,10 +55,10 @@ sh_template = ['Dummy file generated with area2lineload.py\n',
                'dummy.tsh\n',
                '  TRANSLATE    1    1\n',
                'END_TRANS\n',
-               '???',   # here elements [-2]
+               '???',  # here elements [-2]
                'PRECISION 1.0e-3 \n',
                'LOADS\n',
-               'FUNCTION FLOAD\n',
+               'FUNCTION F1\n',
                '???',  # here area loads [-1]
                'END_LOAD\n',
                ' MATERIALS\n',
@@ -76,7 +76,8 @@ sh_template = ['Dummy file generated with area2lineload.py\n',
                ]
 
 # cold section results to be written as an input for mechanical analysis
-dummy_tsh = [' THICKNESS    0.500\n',
+dummy_tsh = ['\n',
+             ' THICKNESS    0.500\n',
              '  MATERIAL    1\n',
              '  REBARS    0\n',
              '\n',
@@ -96,7 +97,7 @@ dummy_tsh = [' THICKNESS    0.500\n',
 def distance(a, b): return sqrt(sum([(a[i] - b[i]) ** 2 for i in range(3)]))
 
 
-def is_between(a, c, b): return isclose(distance(a, c) + distance(c, b), distance(a, b))
+def is_between(a, c, b): return isclose(distance(a, c) + distance(c, b), distance(a, b), rel_tol=0.0001)
 
 
 # return list of [shell points tuple, layer name] for each face (3DFACE and POLYFACE) in DXF
@@ -138,7 +139,9 @@ def dxf_import(dxffile_path: str):
 
     areas = []
     dxf = dxfgrabber.readfile(dxffile_path)
-    def loads_from_layer(layername): return [float(l) for l in layername.split()]
+
+    def loads_from_layer(layername):
+        return [float(l) for l in layername.split()]
 
     # find areas and their layernames
     for ent in dxf.entities:
@@ -147,11 +150,11 @@ def dxf_import(dxffile_path: str):
         elif ent.dxftype == 'POLYFACE':
             areas.append([merge_polyface(ent), loads_from_layer(ent.layer)])
 
-    return areas    # vertices needs to be ordered properly to join them in loop one by one
+    return areas  # vertices needs to be ordered properly to join them in loop one by one
 
 
 # require edge points tuple to be order right 1->2->...->n-1->n
-def make_shell(vertices: list[tuple], element_size: float=None):
+def make_shell(vertices: list[tuple], element_size: float = None):
     gmsh.initialize()
     gmsh.model.add('dummy_shell')
     shell = gmsh.model
@@ -163,7 +166,7 @@ def make_shell(vertices: list[tuple], element_size: float=None):
     lines = []
     for i in range(len(pts)):
         try:
-            lines.append(shell.geo.addLine(pts[i], pts[i+1]))
+            lines.append(shell.geo.addLine(pts[i], pts[i + 1]))
         except IndexError:
             lines.append(shell.geo.addLine(pts[-1], pts[0]))
 
@@ -180,12 +183,12 @@ def make_shell(vertices: list[tuple], element_size: float=None):
     nodes = []
     gmsh_nodes = shell.mesh.getNodes()
     for n in range(len(gmsh_nodes[0])):
-        nodes.append([gmsh_nodes[1][i] for i in [3*n, 3*n+1, 3*n+2]])
+        nodes.append([gmsh_nodes[1][i] for i in [3 * n, 3 * n + 1, 3 * n + 2]])
 
     elements = []
     gmsh_elements = shell.mesh.getElementsByType(3)
     for e in range(len(gmsh_elements[0])):
-        elements.append([gmsh_elements[1][i] for i in [4*e, 4*e+1, 4*e+2, 4*e+3]])
+        elements.append([gmsh_elements[1][i] for i in [4 * e, 4 * e + 1, 4 * e + 2, 4 * e + 3]])
 
     gmsh.finalize()
 
@@ -194,15 +197,15 @@ def make_shell(vertices: list[tuple], element_size: float=None):
 
 # method to be extended for unstructured meshes
 def find_edges(mesh_nodes: list[list], geom_points: list[tuple]):
-    geom_points = [* geom_points, geom_points[0]]
+    geom_points = [*geom_points, geom_points[0]]
     edges = []
 
     for xtag, coords in enumerate(mesh_nodes):
-        for i in range(len(geom_points)-1):
-            if is_between(geom_points[i], coords, geom_points[i+1]) and xtag+1 not in edges:
+        for i in range(len(geom_points) - 1):
+            if is_between(geom_points[i], coords, geom_points[i + 1]) and xtag + 1 not in edges:
                 edges.append(xtag + 1)
 
-    return edges    # list of edge nodes tags
+    return edges  # list of edge nodes tags
 
 
 # produce and save Safir Structural 3D input file with one shell
@@ -214,7 +217,7 @@ def dummy_area(points: list[tuple], load: list, n: int, pathtodir='.'):
     dummy_sh = ''.join(sh_template).split('???')
     nodes, elements = make_shell(points)
 
-    edges = find_edges(nodes, points)     # edge nodes tags
+    edges = find_edges(nodes, points)  # edge nodes tags
 
     dummy_sh.insert(-6, str(len(nodes)))
     dummy_sh.insert(-5, str(len(elements)))
@@ -222,8 +225,7 @@ def dummy_area(points: list[tuple], load: list, n: int, pathtodir='.'):
     # define nodes
     for xtag, coords in enumerate(nodes):
         n_line = node_template.copy()
-        [n_line.insert(-1, str(i)) for i in [xtag+1, *coords]]
-        print(n_line)
+        [n_line.insert(-1, str(i)) for i in [xtag + 1, *coords]]
         dummy_sh.insert(-4, '   '.join(n_line))
 
     # fix edge nodes
@@ -236,14 +238,14 @@ def dummy_area(points: list[tuple], load: list, n: int, pathtodir='.'):
     # define elements
     for xtag, nodes_tags in enumerate(elements):
         e_line = element_template.copy()
-        [e_line.insert(-1, str(i)) for i in [xtag+1, *nodes_tags]]
+        [e_line.insert(-1, str(i)) for i in [xtag + 1, *nodes_tags]]
 
         dummy_sh.insert(-2, '   '.join(e_line))
 
     # load all elements
-    for e in elements:
+    for xtag in range(len(elements)):
         l_line = load_template.copy()
-        [l_line.insert(-1, str(i)) for i in [e[1], *load]]
+        [l_line.insert(-1, str(i)) for i in [xtag + 1, *load]]
 
         dummy_sh.insert(-1, '   '.join(l_line))
 
@@ -252,28 +254,43 @@ def dummy_area(points: list[tuple], load: list, n: int, pathtodir='.'):
 
 
 # map element with load
-# points => [[x,y,z] (x3 for start, middle and end)]
+# points => [[tag1, x1,y1,z1], ... [tag3, x3,y3,z3]] (for start, middle and end point)
 # lineloads => [[p1: list(len=3), r1: list(len=7)], [p2, r2], ... [pn, rn]]
 def map_l2e(points: list, reactions: list[list[list]]):
     e_load = []  # summary line load per element with given endpoints
-    d1, d2 = (999, 999)
+    d1 = 999
+    d2 = 999
+    middle = points[1][1:]
+    length = distance(points[0][1:], points[2][1:])
 
     # find the nearest reaction point
     to_inter = [None, None]
     for r in reactions:
-        d_r = distance(r[0], points[1])
-        if d_r < d1:
+        d_r = distance(r[0], middle)
+        if all([isclose(middle[i], r[0][i], rel_tol=0.01) for i in range(3)]):
+            return [-load/length for load in r[1]]
+        elif d_r < d1:
+            d1 = d_r
             to_inter[0] = r
-
-    # find opposite point
+    # print(points[1][0])
+    # find opposite point if there is no direct matching between reaction point and middle point of beam
     for r in reactions:
-        if is_between(to_inter[0], points[1], r[0]):
-            d_r = distance(r[0], points[1])
+        # print(to_inter[0][0], middle, r[0], is_between(to_inter[0][0], middle, r[0]))
+        if is_between(to_inter[0][0], middle, r[0]):
+            d_r = distance(r[0], middle)
+            # print(d_r, r[0], middle, d2)
             if d_r < d2:
+                # print('shorter', points[1][0])
+                d2 = d_r
                 to_inter[1] = r
 
-    for dof in range(7):    # for every DOF
-        lineload = interp(0, [-d1, d2], [to_inter[i][dof] for i in (0, 1)])/distance(points[0], points[2])
+    for dof in range(6):  # for every DOF
+        try:
+            lineload = -interp(0, [-d1, d2], [to_inter[i][1][dof] for i in (0, 1)]) / length
+        except TypeError:
+            print('Middle point of suspected beam: {}'.format(points[1]))
+            raise ValueError('[ERROR] Mapping load is not possible. Check if load\'s area geometries matches your beam '
+                             'structural model.')
         e_load.append(lineload)
 
     return e_load
@@ -283,19 +300,19 @@ def map_l2e(points: list, reactions: list[list[list]]):
 def gather_results(pathtodummies='.'):
     reac_data = []
     for s in scandir(pathtodummies):
-        if 'XML' in s.name:
+        if all(i in s.name for i in ['XML', 'dummy']):
             r = ReadXML(s.path)
-            reactions = r.reactions(
-                -1)  # [[node_no, [R(node_no)_dof1,...,R(node_no)_dof7],...,[node_no, [R(node_no)_dof1,...,R(node_no)_dof7]]
-            nodes = r.nodes()  # [None,[p1x,p1y,p1z],...,[pnx, pny, pnz]]
+            # [[node_no, R(node_no)_dof1,...,R(node_no)_dof7],...,[node_no, R(node_no)_dof1,...,R(node_no)_dof7]]
+            reactions = r.reactions(-1)
+            nodes = r.nodes()  # [[p1x,p1y,p1z],...,[pnx, pny, pnz]]
             for r in reactions:
-                reac_data.append([nodes[r[0]], r[1]])
+                reac_data.append([nodes[r[0]-1], r[1:]])    # convert node_no to its position in list
 
-    return reac_data  # [[p1: list(len=3), r1: list(len=7)], [p2, r2], ... [pn, rn]]
+    return reac_data  # [[p1: list(len=3), r1: list(len=NRDOF)], [p2, r2], ... [pn, rn]]
 
 
 # add new load data (lineloads) to the model (infile)
-def assign_loads(in_path: str, lineloads: list, function='F1'):
+def assign_loads(in_path: str, lineloads: list, pathtodir='.', function='F1'):
     infile = read_in(in_path)
 
     converted_loads = ['   FUNCTION {}\n'.format(function), '  END_LOAD\n']
@@ -303,7 +320,10 @@ def assign_loads(in_path: str, lineloads: list, function='F1'):
 
     # map beam elements to lineloads
     for be in infile.beams:
-        points = infile.nodes[be[1:4]]   # start, middle, end point of beam element like [x,y,z]
+        # start, middle, end point of beam element like [x,y,z]
+        # convert node_no to its position in node list (-1)
+        points = [infile.nodes[int(i)-1] for i in be[1:4]]
+
         elem_loads = map_l2e(points, lineloads)
         converted_loads.insert(-1, load_template.format(be[0], *elem_loads))
 
@@ -316,7 +336,7 @@ def assign_loads(in_path: str, lineloads: list, function='F1'):
             lloaded = lloaded[:lloaded.index(l) + 1] + converted_loads + lloaded[lloaded.index(l) + 1:]
             break
 
-    with open('{}_ll.in'.format(infile.chid), 'w') as file:
+    with open('{}\{}_ll.in'.format(pathtodir, infile.chid), 'w') as file:
         file.write(''.join(lloaded))
 
 
@@ -340,10 +360,9 @@ def main(pathtodir, pathtoinfile, pathtodxf):
     # read reactions from dummy results and save with coordinates of nodes
     # done
     lineloads = gather_results(pathtodummies=pathtodir)
-
     # assign line loads to beams from IN file:
     # map2le TO BE DONE
-    assign_loads(infile, lineloads)
+    assign_loads(infile, lineloads, pathtodir=pathtodir)
 
 
 main('D:\\testy\\are2lineload\\test_set\calc\\', 'D:\\testy\\are2lineload\\test_set\\area2line.in',
