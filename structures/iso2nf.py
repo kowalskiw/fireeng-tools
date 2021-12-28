@@ -36,7 +36,7 @@ import matplotlib.dates
 '''New, simpler and more object-oriented code'''
 
 
-# find profile - first element relation in SAFIR S3D file (i.e. HEA180.tem-b_0001.tem)
+# find profile - first element relation in SAFIR S3D file (ent.e. HEA180.tem-b_0001.tem)
 # creates beam dict {'profile_no':[section_chid, section_line_no, 'bXXXXX.tem'], ...}
 # creates shell dict {'profile_no':[section_chid, section_line_no, 'sXXXXX.tem'], ...}
 def read_mech_input(path_to_frame):
@@ -489,7 +489,7 @@ class Mechanical:
                 if any(m in line for m in ['M_BEAM', 'M_NODE', 'MASS', 'END_MASS']):
                     init.remove(line)
 
-        # change TEM and TSH names in IN file (i.e. 'hea180.tem' -> 'b00001_1.tem')
+        # change TEM and TSH names in IN file (ent.e. 'hea180.tem' -> 'b00001_1.tem')
         else:
             for t in self.thermals:
                 init[t.line_no] = '{}\n'.format(t.first)
@@ -605,14 +605,14 @@ class Check:
 #
 #         with open('frame.in') as frame:
 #             f = frame.readlines()
-#             for i in range(len(f)):
-#                 if 'TIME' in f[i]:
-#                     t_end = f[i + 1].split()[1]
+#             for ent in range(len(f)):
+#                 if 'TIME' in f[ent]:
+#                     t_end = f[ent + 1].split()[1]
 #                     break
 #         # Thermal 2D analyses of profiles
 #         print('Running {} thermal analysis...'.format(case.name))
-#         for i in scandir():
-#             f = i.name
+#         for ent in scandir():
+#             f = ent.name
 #             if f.endswith('.in') and not f == 'frame.in':
 #                 chid = f[:-3]
 #                 t = ThermalScripted(f, 'LCF', frame_chid='frame', profile_pth=f, time_end=t_end)

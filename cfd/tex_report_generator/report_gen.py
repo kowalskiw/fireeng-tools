@@ -174,7 +174,7 @@ class GetSMVInfo:
 
         return slice_bnds
 
-    '''finally inputab should be normalized, i.e. slices 1, 2 and 3 are VIS1.4, TEMP1.4, TEMP1.8
+    '''finally inputab should be normalized, ent.e. slices 1, 2 and 3 are VIS1.4, TEMP1.4, TEMP1.8
             we should implement slices in correct order while creating .fds file'''
 
     def run_fds2ascii(self, msh):
@@ -236,8 +236,8 @@ if __name__ == '__main__':
 
     ScenariosLvl([[50, 250, 900], *results_paths]).scenario_loop()
 
-    # for i in results_paths:
-    #     crit_tab = GetSMVInfo(i).convertuple()
+    # for ent in results_paths:
+    #     crit_tab = GetSMVInfo(ent).convertuple()
     #     for j in crit_tab:
     #         print('marking process has been started')
-    #         Marker(j, i + '/images').run4all()
+    #         Marker(j, ent + '/images').run4all()
