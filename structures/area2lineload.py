@@ -71,11 +71,10 @@
 #
 #   If you have noticed any bugs or enhancement possibilities feel free to submit an issue or open a pull-request here:
 #   https://github.com/kowalskiw/fireeng-tools
-
 import sys
 from math import sqrt, isclose
-from os import scandir, makedirs
-from os.path import basename, dirname
+from os import scandir, makedirs, rmdir
+from os.path import basename, dirname, abspath
 import dxfgrabber
 from safir_tools import run_safir, ReadXML, read_in
 import gmsh
@@ -440,6 +439,10 @@ class DummyShellDXF(DummyShell):
 class Convert:
     def __init__(self, path_to_areas: str, path_to_in: str):
         self.paths = {'areas': path_to_areas, 'infile': path_to_in, 'calc': '{}\\out-files'.format(dirname(path_to_in))}
+        try:
+            rmdir(self.paths['calc'])
+        except FileNotFoundError:
+            pass
         makedirs(self.paths['calc'])
 
     def prepare_dummies(self):
@@ -546,6 +549,6 @@ class Convert:
 
 
 if __name__ == '__main__':
-    case = Convert(*sys.argv[1:])
+    case = Convert(*[abspath(p) for p in sys.argv[1:]])
     case.convert()
     exit(0)
