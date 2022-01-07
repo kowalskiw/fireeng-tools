@@ -16,12 +16,11 @@
 import sys
 from os.path import basename, dirname, abspath
 from os import scandir, makedirs, rmdir, popen
-from numpy import add
-from numpy.lib.npyio import load
 import pyiges
 from math import ceil
 
 def getXPositions(path_to_file):
+    """Get the lowest and highest x coordinate of the first Rational B-Spline Surface (Type 128) in the iges file"""
     iges_file = pyiges.read(path_to_file)
     bsurfs = iges_file.bspline_surfaces()
     bsurf_points = bsurfs[0].control_points()
@@ -34,6 +33,7 @@ def getXPositions(path_to_file):
     return x_min, x_max
 
 def calculateLoad(load_function, x_min, x_max):
+    """Calculate the load given the load function and start and end values of x"""
     additional_load = 0
     for i in range(len(load_function)-1):
         if x_min > load_function[i][0] and x_min <= load_function[i+1][0]:
@@ -57,16 +57,16 @@ def calculateLoad(load_function, x_min, x_max):
 
 class UnevenLoads:
     def __init__(self, path_to_areas: str):
-        self.paths = {'areas': path_to_areas, 'converted_areas': '{}\\converted_areas'.format(dirname(path_to_areas))}
+        self.paths = {'areas': path_to_areas, 'loaded_areas': '{}\\loaded_areas'.format(dirname(path_to_areas))}
         try:
-            rmdir(self.paths['converted_areas'])
+            rmdir(self.paths['loaded_areas'])
         except FileNotFoundError:
             pass
         except OSError:
-            print(f"[ERROR] Catalogue {self.paths['converted_areas']} already exists and is not empty.")
+            print(f"[ERROR] Catalogue {self.paths['loaded_areas']} already exists and is not empty.")
             print('Delete the files or the whole catalogue and run the script again.')
-            exit(0)
-        makedirs(self.paths['converted_areas'])
+            exit(1)
+        makedirs(self.paths['loaded_areas'])
         self.files = []
 
     def prepareFilesAndLoads(self, load_function):
@@ -78,28 +78,26 @@ class UnevenLoads:
                 additional_load = calculateLoad(load_function, x_min, x_max)
                 files.append([file.path, additional_load])
                 # print(f"File: {basename(file)}, Position: x_min = {x_min:4.2f}, x_max = {x_max:4.2f} Additional load: {additional_load}")
-                # print(f"File: {basename(file)}, Position: x = {x_position:8.4f}, Additional load: {additional_load}")
         self.files = files
     
     def createRenamedFiles(self):
-        """Copies renamed files to the converted_areas folder based on self.files array with path and load"""
+        """Copies renamed files to the loaded_areas folder based on self.files array with path and load"""
         for i in range(len(self.files)):
+            #create new basename
             split_basename = basename(self.files[i][0]).split('_')
             basename_loads = split_basename[0].split(' ')
             basename_loads[2] = str(int(basename_loads[2])- self.files[i][1])
             split_basename[0] = ' '.join(basename_loads)
             new_basename = '_'.join(split_basename)
 
-            print(f"File: {basename(self.files[i][0])}, Additional load: {self.files[i][1]:4d}, Renamed file: {new_basename:20}")
-            # print(f"{self.paths['converted_areas']}\\{new_basename}")
-            # self.files[i].append = f"{self.paths['converted_areas']}\\{new_basename}"
+            #copy file with a new name
             source = self.files[i][0]
-            destination = f"{self.paths['converted_areas']}\\{new_basename}"
-            # print(f"Source: {source} \nDestination: {destination}")
-            # print(f"copy \"{source}\" \"{destination}\"")
+            destination = f"{self.paths['loaded_areas']}\\{new_basename}"
             popen(f"copy \"{source}\" \"{destination}\"")
+            print(f"File: {basename(self.files[i][0])}, Additional load: {self.files[i][1]:4d}, Renamed file: {new_basename}")
 
 if __name__ == '__main__':
+    # Import load function from txt file
     load_function = []
     path_to_load_function_txt = abspath(sys.argv[1])
     with open(path_to_load_function_txt, 'r') as load_function_txt:
@@ -115,6 +113,4 @@ if __name__ == '__main__':
     print('[OK] Copying renamed files started')
     case.createRenamedFiles()
     print('[OK] Renamed files copied succesfully')
-
     exit(0)
-
