@@ -269,7 +269,10 @@ class DummyShellIGES(DummyShell):
         gmsh.finalize()
 
         # add load attribute from IGES filename
-        self.load = [float(i) for i in '.'.join(basename(self.filepath).split('.')[:-1]).split()]
+        if '_' in basename(self.filepath):
+            self.load = [float(i) for i in basename(self.filepath).split('_')[0].split()]
+        else:
+            self.load = [float(i) for i in basename(self.filepath).split('.')[0].split()]
 
         return nodes, elements  # [[[x1,y1,z1]], ... n]   [[[nodetag1,nodetag1, ... nodetagm]], ... n]
 
