@@ -73,12 +73,13 @@
 #   https://github.com/kowalskiw/fireeng-tools
 import sys
 from math import sqrt, isclose
-from os import scandir, makedirs, rmdir
+from os import scandir, makedirs
 from os.path import basename, dirname, abspath
 import dxfgrabber
 from safir_tools import run_safir, ReadXML, read_in
 import gmsh
 from numpy import interp
+from shutil import rmtree
 
 
 def distance(a, b): return sqrt(sum([(a[i] - b[i]) ** 2 for i in range(3)]))
@@ -88,7 +89,7 @@ def is_between(a, c, b): return isclose(distance(a, c) + distance(c, b), distanc
 
 
 class DummyShell:
-    def __init__(self, number: int, path_to_file: str, element_size: float = None, calcdir=None):
+    def __init__(self, number: int, path_to_file: str, element_size: float = None, calcdir=None, edges2=None):
         # dummy shell template to present area of loading with marked places to insert data
         self.template = ['Dummy file generated with area2lineload.py\n',
                          'Check our github: kowalskiw/fireeng-tools\n',
@@ -165,18 +166,26 @@ class DummyShell:
         self.load = []  # [x_pressure, y_pressure, z_pressure] [N/m2]
 
         # self.nodes = [tag, x, y, z]    self.elements = [tag, node1, node2, node3, node4]
-        self.nodes, self.elements = self.geometry()
+        self.nodes, self.elements, self.etagsnodes = self.geometry()
+
+        self.edges2 = edges2
 
     def geometry(self):
         nodes = []
         elements = []
+        enodes = []
 
-        return nodes, elements  # [[[x1,y1,z1]], ... n]   [[[nodetag1,nodetag1, ... nodetagm]], ... n]
+        return nodes, elements, enodes  # [[[x1,y1,z1]], ... n]   [[[nodetag1,nodetag1, ... nodetagm]], ... n]
 
     def edges(self):
         edges = []
 
         return edges
+
+    def do_edges2(self):
+        edges2 = []
+
+        return edges2
 
     def write(self):
         node_template = ['      NODE     ', '  \n']
@@ -184,8 +193,6 @@ class DummyShell:
         fix_template = ['     BLOCK     ', '   F0   F0   F0   F0   F0   F0   F0\n']
         load_template = [' DISTRSH    ', '\n']
         dummy_sh = ''.join(self.template).split('???')
-
-        edgetags = self.edges()  # edge nodes tags [[start point of edge 1, endpoint of edge 1], ... n]
 
         dummy_sh.insert(-6, str(len(self.nodes)))
         dummy_sh.insert(-5, str(len(self.elements)))
@@ -197,11 +204,18 @@ class DummyShell:
             dummy_sh.insert(-4, '   '.join(n_line))
 
         # fix edge nodes
-        for tag in edgetags:
-            fix_line = fix_template.copy()
-            fix_line.insert(-1, str(tag))
-
-            dummy_sh.insert(-3, '   '.join(fix_line))
+        def fix(nodes):
+            for tag in nodes:
+                if tag not in fixed:
+                    fix_line = fix_template.copy()
+                    fix_line.insert(-1, str(tag))
+                    dummy_sh.insert(-3, '   '.join(fix_line))
+                    fixed.append(tag)
+        fixed = []
+        if self.edges2:
+            fix(self.edges())   # it returns coordinates, should return tags
+        else:
+            fix(self.etagsnodes[0])
 
         # define elements
         for xtag, nodes_tags in enumerate(self.elements):
@@ -237,21 +251,18 @@ class DummyShellIGES(DummyShell):
         shell.occ.importShapes(self.filepath)
         shell.occ.synchronize()
 
-        # recombine meshes (triangle mesh -> quadrilateral mesh)
-        try:
-            i = 1
-            while True:
-                shell.mesh.setRecombine(2, i)
-                i += 1
-        except Exception:
-            pass
 
-        # create mesh
-        gmsh.option.setNumber("Mesh.Algorithm", 8)
-        gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 3)
-        shell.mesh.setRecombine(2, 1)
+        ## create mesh
+        # gmsh.option.setNumber("Mesh.Algorithm", 8)    # quad-deticated meshing algorithm
+        ## !!! throwing an error: 1D mesh cannot be divided by 2
+        # gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 3)   # more accurate recombination algorithms
+        ## !!!
         shell.mesh.setSize(shell.getEntities(), self.elsize) if self.elsize else None
-        shell.mesh.generate(2)
+
+        shell.mesh.generate(2)  # generate 2D mesh
+        shell.mesh.refine()
+        shell.mesh.setRecombine(2, 1)
+        shell.mesh.generate(2)  # generate 2D mesh
 
         # get mesh data
         nodes = []
@@ -264,14 +275,18 @@ class DummyShellIGES(DummyShell):
         for e in range(len(gmsh_elements[0])):
             elements.append([gmsh_elements[1][i] for i in [4 * e, 4 * e + 1, 4 * e + 2, 4 * e + 3]])
 
-
+        # get edgenodes
+        etagsnodes = shell.mesh.getNodes(1, includeBoundary=True)
+        # for n in range(len(etags[0])):
+        #     enodes.append([etags[1][i] for i in [3 * n, 3 * n + 1, 3 * n + 2]])
 
         gmsh.finalize()
 
         # add load attribute from IGES filename
-        self.load = [float(i) for i in '.'.join(basename(self.filepath).split('.')[:-1]).split()]
+        splitter = '_' if '_' in basename(self.filepath) else '.'
+        self.load = [float(i) for i in '.'.join(basename(self.filepath).split(splitter)[:-1]).split()]
 
-        return nodes, elements  # [[[x1,y1,z1]], ... n]   [[[nodetag1,nodetag1, ... nodetagm]], ... n]
+        return nodes, elements, etagsnodes  # [[[x1,y1,z1]], ... n]   [[[nodetag1,nodetag1, ... nodetagm]], ... n]
 
     # read edges from iges 'edges' file
     def edges(self):
@@ -282,7 +297,7 @@ class DummyShellIGES(DummyShell):
 
         # find nodes of meshed edgelines
         gmsh.model.mesh.generate()
-        nodes = gmsh.model.mesh.getNodes()
+        nodes = gmsh.model.mesh.getNodes(1)
 
         edgenodes = []  # find edge nodes coordinates
         [edgenodes.append(list(nodes[1][n:n + 3])) for n in range(0, 3 * len(nodes[0]), 3)]
@@ -295,6 +310,18 @@ class DummyShellIGES(DummyShell):
                 print('[WARNING] {} is not matched as a valid node in dummy shell mesh'.format(en))
 
         gmsh.finalize()
+
+        return list(set(edgetags))  # [edgenodetag1, edgenodetag2, ... edgenodetagn]
+
+    def do_edges2(self):
+
+        edgetags = []  # find edge nodes tags in mesh of dummy shell
+        for n in self.etagsnodes[1]:
+            for e in self.edges2:
+                if all([isclose(n[i], e[i], rel_tol=0.1) for i in range(0, 3)]):
+                    edgetags.append(n[0])
+
+        print('{} nodes were constraint'.format(len(edgetags)))
 
         return list(set(edgetags))  # [edgenodetag1, edgenodetag2, ... edgenodetagn]
 
@@ -440,10 +467,32 @@ class Convert:
     def __init__(self, path_to_areas: str, path_to_in: str):
         self.paths = {'areas': path_to_areas, 'infile': path_to_in, 'calc': '{}\\out-files'.format(dirname(path_to_in))}
         try:
-            rmdir(self.paths['calc'])
+            rmtree(self.paths['calc'], ignore_errors=True)
         except FileNotFoundError:
             pass
         makedirs(self.paths['calc'])
+
+        try:
+            self.edges2 = self.get_edges()
+        except:
+            gmsh.finalize()
+            self.edges2 = None
+
+    def get_edges(self):
+        gmsh.initialize()
+        gmsh.model.add('edges')
+        gmsh.model.occ.importShapes('{}\\edges.igs'.format(self.paths['areas']))
+        gmsh.model.occ.synchronize()
+
+        # find nodes of meshed edgelines
+        gmsh.model.mesh.setSize(gmsh.model.getEntities(), 0.01)
+        gmsh.model.mesh.generate(1)
+        nodes = gmsh.model.mesh.getNodes()
+
+        gmsh.finalize()
+        # return edge nodes coordinates
+        # edgenodescoords = [list(nodes[1][n:n + 3]) for n in range(0, 3 * len(nodes[0]), 3)]
+        return [list(nodes[1][n:n + 3]) for n in range(0, 3 * len(nodes[0]), 3)]
 
     def prepare_dummies(self):
         i = 0
@@ -452,8 +501,10 @@ class Convert:
             if a.is_file() and 'edges' not in a.name:
                 if a.name.lower().endswith('.dxf'):
                     dummies.append(DummyShellDXF(i, a.path, calcdir=self.paths['calc']))
+                    i += 1
                 elif any([a.name.lower().endswith(ext) for ext in ['.igs', '.iges']]):
-                    dummies.append(DummyShellIGES(i, a.path, calcdir=self.paths['calc']))
+                    dummies.append(DummyShellIGES(i, a.path, edges2=self.edges2, calcdir=self.paths['calc']))
+                    i += 1
 
         return dummies
 
