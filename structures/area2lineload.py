@@ -158,6 +158,7 @@ class DummyShell:
                         '  0.2300E+00  0.2400E+00  0.2500E+00\n']
 
         self.no = number
+        self.str_no = '0' * (5 - len(str(number))) + str(number)
         self.elsize = element_size
         self.filepath = path_to_file  # path to DXF (dxf=True) or IGES (dxf=False) file
         self.dirpath = dirname(path_to_file)  # path to calculation directory
@@ -231,7 +232,7 @@ class DummyShell:
 
             dummy_sh.insert(-1, '   '.join(l_line))
 
-        with open('{}\dummy_{}.in'.format(self.calcdir, self.no), 'w+') as d:
+        with open('{}\dummy_{}.in'.format(self.calcdir, self.str_no), 'w+') as d:
             d.write(''.join(dummy_sh))
 
         if 'dummy.tsh' not in scandir(self.calcdir):
@@ -239,7 +240,7 @@ class DummyShell:
                 d.writelines(self.section)
 
     def run(self):
-        run_safir('{}\dummy_{}.in'.format(self.calcdir, self.no))
+        run_safir('{}\dummy_{}.in'.format(self.calcdir, self.str_no))
 
 
 class DummyShellIGES(DummyShell):
@@ -284,7 +285,7 @@ class DummyShellIGES(DummyShell):
 
         # add load attribute from IGES filename
         splitter = '_' if '_' in basename(self.filepath) else '.'
-        self.load = [float(i) for i in '.'.join(basename(self.filepath).split(splitter)[:-1]).split()]
+        self.load = [float(i) for i in basename(self.filepath).split(splitter)[0].split()]
 
         return nodes, elements, etagsnodes  # [[[x1,y1,z1]], ... n]   [[[nodetag1,nodetag1, ... nodetagm]], ... n]
 
@@ -514,6 +515,7 @@ class Convert:
             d.run()
 
     def read_results(self):
+        print('Reading results...', end='\r')
         reac_data = []
         for s in scandir(self.paths['calc']):
             if all(i in s.name for i in ['XML', 'dummy']):
@@ -526,6 +528,7 @@ class Convert:
                     dum_reac.append([nodes[r[0] - 1], r[1:]])  # convert node_no to its position in list
                 reac_data.append(dum_reac)
 
+        print('[OK] Results read    ') if reac_data else print('[WARNING] Results matrix is empty')
         return reac_data  # [[dummy_no, [p1: list(len=3), r1: list(len=NRDOF)], [p2, r2], ... [pn, rn]]]
 
     def assign_loads(self, reactions: list[list[list]], function='F1', mass=False):
@@ -578,6 +581,8 @@ class Convert:
                 points = [infile.nodes[int(i) - 1] for i in be[1:4]]
                 elem_loads = map_l2e(points, dummy[1:])     # mapping function
                 converted_loads.insert(-1, load_template.format(be[0], *elem_loads)) if elem_loads else None
+
+            print('[INFO] %i elements mapped with dummy_%s' % (len(converted_loads) - 2, dummy[0]))
 
             # make new IN file with converted loads
             for line in lloaded:
