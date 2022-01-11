@@ -8,9 +8,10 @@ from xml.dom.minidom import parse as pxml
 from os.path import dirname, basename
 
 
-def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True):
+def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True,rep_rel=True):
     backpath = getcwd()
-    chdir(dirname(in_file_path))
+    dirpath = dirname(in_file_path)
+    chdir(dirpath)
     chid = basename(in_file_path)[:-3]
 
     process = subprocess.Popen(' '.join([safir_exe_path, chid]), shell=False, stdout=subprocess.PIPE)
@@ -47,6 +48,13 @@ def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True
             print('[WARNING] SAFIR finished "{}" calculations with error!'.format(chid))
             return -1
 
+#     if rep_rel:
+#         try:
+#             repair_relax('%s \\ %s.xml' % (dirpath, chid))
+#
+#
+# def repair_relax(path):
+#
 
 # call functions to read single parts of results file
 class ReadXML:
@@ -151,19 +159,21 @@ class InFile:
             keys = ['NODES', 'NODE', ['FIXATIONS']]
             entity_type = 0
         elif entity_type in ['beam', 'beams', 'b', 1]:
-            keys = ['NODOFBEAM', 'ELEM', ['NODOFSHELL', 'NODOFSOLID', 'PRECISION']]
+            keys = ['NODOFBEAM', 'ELEM', ['NODOFSHELL', 'NODOFSOLID', 'PRECISION', 'RELAX_ELEM']]
             entity_type = 1
         elif entity_type in ['shell', 'shells', 'sh', 2]:
-            keys = ['NODOFSHELL', 'ELEM', ['NODOFBEAM', 'NODOFSOLID', 'PRECISION']]
+            keys = ['NODOFSHELL', 'ELEM', ['NODOFBEAM', 'NODOFSOLID', 'PRECISION', 'RELAX_ELEM']]
             entity_type = 2
         elif entity_type in ['solid', 'solids', 'sd', 3]:
-            keys = ['NODOFSOLID', 'ELEM', ['NODOFBEAM', 'NODOFSHELL', 'PRECISION']]
+            keys = ['NODOFSOLID', 'ELEM', ['NODOFBEAM', 'NODOFSHELL', 'PRECISION', 'RELAX_ELEM']]
             entity_type = 3
 
         read = False
         for line in self.file_lines:
             if keys[0] in line:
                 read = True
+            elif read and any(stop in line for stop in keys[2]):
+                break
             elif read and keys[1] in line:
                 lsplt = line.split()
                 if entity_type == 0:
@@ -171,8 +181,7 @@ class InFile:
                     got[-1].insert(0, int(lsplt[1]))    # entity tag
                 else:
                     got.append([int(i) for i in lsplt[1:]])  # entity tag and lower entities tags
-            elif read and any(stop in line for stop in keys[2]):
-                break
+
 
         return got
 
