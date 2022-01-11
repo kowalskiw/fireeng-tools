@@ -1,10 +1,35 @@
 import subprocess
 import sys
 from os import getcwd, chdir
+import sys
 
 from xml.dom.minidom import parse as pxml
+from xml.etree import ElementTree
 
-from os.path import dirname, basename
+# running SAFIR simulation
+from os.path import dirname, basename, abspath, exists
+
+def repair_relax_in_xml(xml_file_path):
+    """Modifies relaxations in the XML output file to the correct format for Diamond"""
+    # Check if there is </SAFIR_RESULTS> at the end of the file
+
+    # Currently works only for beams
+    print(f"[WAIT] Parsing the {basename(xml_file_path)} file")
+    tree = ElementTree.parse(xml_file_path)
+    print(f"[OK] File parsed")
+
+    def modify_rlx(rlx_text):
+        return rlx_text.replace('-0.100E+01', '-1').replace('0.000E+00', '0')
+
+    for rlx in tree.find('RELAX/BEAMS'):
+        rlx.text = modify_rlx(rlx.text)
+    print("[OK] Relaxations modified")
+
+    print(f"[WAIT] Writing changes to the {basename(xml_file_path)} file")
+    tree.write(xml_file_path)
+    print(f"[OK] Changes written to the {basename(xml_file_path)} file")
+
+    
 
 
 # running SAFIR simulation
@@ -140,14 +165,12 @@ class ReadXML:
         print('ReadXML.beams() module not ready yet')
         pass
 
-
 # load all results file to Python DB
 class LoadFullXML(ReadXML):
     def __init__(self, pathtoresults):
         super().__init__(pathtoresults)
         # read all data
     pass
-
 
 def read_in(path):
     with open(path) as file:
@@ -157,7 +180,6 @@ def read_in(path):
     # type = s3d/t2d/tsh2d/t3d/s2d
 
     return InFile(basename(path)[:-3], f, type=None)
-
 
 class InFile:
     def __init__(self, chid, file_lines, type=None):
@@ -204,6 +226,20 @@ class InFile:
 
         return got
 
-
+# if you want to run a function from this file, add the function name as the first parameter
+# the rest of the parameters will be forwarded to the called function
 if __name__ == '__main__':
-    run_safir(sys.argv[1])
+    try:
+        function = sys.argv[1]
+
+        # change to full path if it is a file name
+        args = []
+        for arg in sys.argv[2:]:
+            args.append(abspath(arg) if exists(abspath(arg)) else arg)
+
+        globals()[function](*args)
+        exit(0)
+    except IndexError:
+        raise Exception("Please provide function name")
+    except KeyError:
+        raise Exception(f"Function {function} was not found")
