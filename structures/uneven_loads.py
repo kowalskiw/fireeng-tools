@@ -19,8 +19,6 @@
 import sys
 from os.path import basename, dirname, abspath
 from os import scandir, makedirs, rmdir, popen
-from numpy import add
-from numpy.lib.npyio import load
 import pyiges
 from math import ceil
 
@@ -45,7 +43,7 @@ def calculateLoad(load_function, x_min, x_max):
                 x1, x2 = load_function[i][0], load_function[i+1][0]
                 y1, y2 = load_function[i][1], load_function[i+1][1]
                 x_avg = (x_min + x_max) / 2
-                avg_load = ceil(((x_avg - x1) * (y2 - y1) / (x2 - x1)) + y1)
+                additional_load = ceil(((x_avg - x1) * (y2 - y1) / (x2 - x1)) + y1)
             elif x_max > load_function[i+1][0]:
                 # if the surface minimum x-coordinate is before and maximum x-coordinate is after
                 # one of the points defined in the given load function
