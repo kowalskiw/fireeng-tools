@@ -1,14 +1,14 @@
-import os
 import subprocess
+import sys
 from os import getcwd, chdir
 
 from xml.dom.minidom import parse as pxml
 
-# running SAFIR simulation
 from os.path import dirname, basename
 
 
-def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True,rep_rel=True):
+# running SAFIR simulation
+def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True, fix_rlx=True):
     backpath = getcwd()
     dirpath = dirname(in_file_path)
     chdir(dirpath)
@@ -40,6 +40,9 @@ def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True
     rc = process.poll()
     chdir(backpath)
 
+    if fix_rlx:
+        repair_relax('%s\\%s.XML' % (dirpath, chid))
+
     if not rc:
         if success:
             print('[OK] SAFIR finished "{}" calculations at'.format(chid))
@@ -48,13 +51,29 @@ def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True
             print('[WARNING] SAFIR finished "{}" calculations with error!'.format(chid))
             return -1
 
-#     if rep_rel:
-#         try:
-#             repair_relax('%s \\ %s.xml' % (dirpath, chid))
-#
-#
-# def repair_relax(path):
-#
+
+def repair_relax(path_to_xml, copyxml=True):
+    rlx_lines = []
+    index = 0
+    fixed = 0
+
+    with open(path_to_xml) as xmlfile:
+        for line in xmlfile:
+            if 'RLX' in line:
+                rlx_lines.append('0'.join('-1'.join(line.split('-0.100E+01')).split('0.000E+00')))
+                fixed += 1
+            else:
+                rlx_lines.append(line)
+
+            index += 1
+
+    with open('%s_fixed' % path_to_xml if copyxml else path_to_xml, 'w') as newxml:
+        newxml.writelines(rlx_lines)
+
+    print('[OK] %i XML file lines fixed (relaxations bug)' % fixed)
+
+    return 0
+
 
 # call functions to read single parts of results file
 class ReadXML:
@@ -185,3 +204,6 @@ class InFile:
 
         return got
 
+
+if __name__ == '__main__':
+    run_safir(sys.argv[1])

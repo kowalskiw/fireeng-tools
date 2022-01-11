@@ -251,7 +251,7 @@ class DummyShell:
                 d.writelines(self.section)
 
     def run(self):
-        run_safir('{}\dummy_{}.in'.format(self.calcdir, self.str_no))
+        run_safir('{}\dummy_{}.in'.format(self.calcdir, self.str_no), fix_rlx=False)
 
 
 class DummyShellIGES(DummyShell):

@@ -5,7 +5,7 @@ from os import getcwd, chdir
 from os.path import abspath as ap
 from os.path import isfile, basename, dirname
 from shutil import copy2
-from sys import  argv
+from sys import argv
 import argparse as ar
 
 
@@ -229,7 +229,6 @@ class ThermalTEM:
                 else:
                     init[no] = 'FLUX {}'.format('NO'.join((thermal_attack.join(line[4:].split('FISO'))).split('F20')))
                     init.insert(no + 1, 'NO'.join(line.split('FISO')))
-
 
             # change convective heat transfer coefficient of steel to 35 in locafi mode according to EN1991-1-2
             elif self.model in {'lcf', 'locafi', 'hsm', 'hasemi'} and 'STEEL' in line:
