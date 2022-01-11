@@ -1,12 +1,9 @@
 import subprocess
 import sys
 from os import getcwd, chdir
-import sys
 
 from xml.dom.minidom import parse as pxml
 from xml.etree import ElementTree
-
-# running SAFIR simulation
 from os.path import dirname, basename, abspath, exists
 
 def repair_relax_in_xml(xml_file_path):
@@ -28,9 +25,6 @@ def repair_relax_in_xml(xml_file_path):
     print(f"[WAIT] Writing changes to the {basename(xml_file_path)} file")
     tree.write(xml_file_path)
     print(f"[OK] Changes written to the {basename(xml_file_path)} file")
-
-    
-
 
 # running SAFIR simulation
 def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True, fix_rlx=True):
@@ -76,7 +70,6 @@ def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True
             print('[WARNING] SAFIR finished "{}" calculations with error!'.format(chid))
             return -1
 
-
 def repair_relax(path_to_xml, copyxml=True):
     rlx_lines = []
     index = 0
@@ -98,7 +91,6 @@ def repair_relax(path_to_xml, copyxml=True):
     print('[OK] %i XML file lines fixed (relaxations bug)' % fixed)
 
     return 0
-
 
 # call functions to read single parts of results file
 class ReadXML:
@@ -227,11 +219,11 @@ class InFile:
         return got
 
 # if you want to run a function from this file, add the function name as the first parameter
-# the rest of the parameters will be forwarded to the called function
+# the rest of the parameters will be forwarded to the called function (files as a full path)
 if __name__ == '__main__':
     try:
         function = sys.argv[1]
-
+        
         # change to full path if it is a file name
         args = []
         for arg in sys.argv[2:]:
