@@ -1,13 +1,11 @@
-import subprocess
 from time import time as sec
 from datetime import timedelta as dt
-from os import getcwd, chdir
 from os.path import abspath as ap
 from os.path import isfile, basename, dirname
 from shutil import copy2
 from sys import argv
 import argparse as ar
-
+from safir_tools import run_safir
 
 # # print progress of process
 # def progress_bar(title, current, total, bar_length=20):
@@ -85,47 +83,6 @@ def read_mech_input(path_to_frame):
             t_end = float(frame_lines[no + 1].split()[1])
 
     return tems, tshs, t_end
-
-
-# running SAFIR simulation
-def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True):
-    backpath = getcwd()
-    chdir(dirname(in_file_path))
-    chid = basename(in_file_path)[:-3]
-
-    process = subprocess.Popen(' '.join([safir_exe_path, chid]), shell=False, stdout=subprocess.PIPE)
-    print_all = False
-    success = True
-    while True:
-        if process.poll() is not None:
-            break
-        try:
-            output = process.stdout.readline().strip().decode()
-        except UnicodeError:
-            continue
-        if output:
-            if print_all:
-                print('    ', output)
-            # check for errors
-            elif 'ERROR' in output or 'forrtl' in output:
-                print('[ERROR] FatalSafirError: ')
-                print_all = True
-                success = False
-                print('    ', output)
-            # check for timestep
-            elif 'time' in output and print_time:
-                print('%s %s' % ('SAFIR started "{}" calculations: '.format(chid), output), end='\r')
-
-    rc = process.poll()
-    chdir(backpath)
-
-    if not rc:
-        if success:
-            print('[OK] SAFIR finished "{}" calculations at'.format(chid))
-            return 0
-        else:
-            print('[WARNING] SAFIR finished "{}" calculations with error!'.format(chid))
-            return -1
 
 
 # return the input file path regarding to GiD catalogues or files with no further directory tree
