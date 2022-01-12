@@ -30,8 +30,6 @@ import argparse as ar
 #                 value = splited[-1]
 #             user[splited[0]] = value
 #     return user
-#
-import matplotlib.dates
 
 '''New, simpler and more object-oriented code'''
 
@@ -595,7 +593,7 @@ class Check:
 
 
 # # to be rewritten
-# # when fdsafir.py called by multi.py script of McSteel or when '-s'/'--scripted' flag used
+# # when iso2nf.py called by multi.py script of McSteel or when '-s'/'--scripted' flag used
 # def scripted(safir_path, config_path, results_path):
 #     for case in scandir('{}\worst'.format(results_path)):
 #         chdir(case.path)
@@ -685,8 +683,8 @@ def get_arguments(from_argv):
 if __name__ == '__main__':
     first = argv[1]
 
-    print('\n====== Welcome to fdsafir2 ======\n fdsafir.py is one of the components of McSteel package.\n\n'
-          'I am trying to run your case now. I will keep you updated on the progress. \n==================\n')
+    print('\n====== Welcome to iso2nf ======\n iso2nf.py is one of the components of fireeng-tools structural package.'
+          '\n\nI am trying to run your case now. I will keep you updated on the progress. \n==================\n')
 
     args = get_arguments(argv[1:])
 
@@ -694,5 +692,5 @@ if __name__ == '__main__':
         run_user_mode(n, args)
 
     print('\n==================\nThank you for using our tools. We will appreciate your feedback and bug reports'
-          ' on github: https://www.github.com/kowalskiw/mcsteel\n'
+          ' on github: https://www.github.com/kowalskiw/fireeng-tools\n'
           'Have a good day!\n==================\n')

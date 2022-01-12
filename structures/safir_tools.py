@@ -6,6 +6,7 @@ from xml.dom.minidom import parse as pxml
 from xml.etree import ElementTree
 from os.path import dirname, basename, abspath, exists
 
+
 def repair_relax_in_xml(xml_file_path):
     """Modifies relaxations in the XML output file to the correct format for Diamond"""
     # Check if there is </SAFIR_RESULTS> at the end of the file
@@ -26,8 +27,11 @@ def repair_relax_in_xml(xml_file_path):
     tree.write(xml_file_path)
     print(f"[OK] Changes written to the {basename(xml_file_path)} file")
 
+
 # running SAFIR simulation
 def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True, fix_rlx=True):
+    in_file_path = input('[INPUT] Give me SAFIR input file to be run: ') if in_file_path == 'input' else in_file_path
+    
     backpath = getcwd()
     dirpath = dirname(in_file_path)
     chdir(dirpath)
@@ -70,6 +74,7 @@ def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True
             print('[WARNING] SAFIR finished "{}" calculations with error!'.format(chid))
             return -1
 
+
 def repair_relax(path_to_xml, copyxml=True):
     rlx_lines = []
     index = 0
@@ -85,12 +90,13 @@ def repair_relax(path_to_xml, copyxml=True):
 
             index += 1
 
-    with open('%s_fixed' % path_to_xml if copyxml else path_to_xml, 'w') as newxml:
+    with open('%s_fixed.XML' % path_to_xml[:-4] if copyxml else path_to_xml, 'w') as newxml:
         newxml.writelines(rlx_lines)
 
     print('[OK] %i XML file lines fixed (relaxations bug)' % fixed)
 
     return 0
+
 
 # call functions to read single parts of results file
 class ReadXML:
@@ -157,12 +163,14 @@ class ReadXML:
         print('ReadXML.beams() module not ready yet')
         pass
 
+
 # load all results file to Python DB
 class LoadFullXML(ReadXML):
     def __init__(self, pathtoresults):
         super().__init__(pathtoresults)
         # read all data
     pass
+
 
 def read_in(path):
     with open(path) as file:
@@ -172,6 +180,7 @@ def read_in(path):
     # type = s3d/t2d/tsh2d/t3d/s2d
 
     return InFile(basename(path)[:-3], f, type=None)
+
 
 class InFile:
     def __init__(self, chid, file_lines, type=None):
@@ -215,8 +224,8 @@ class InFile:
                 else:
                     got.append([int(i) for i in lsplt[1:]])  # entity tag and lower entities tags
 
-
         return got
+
 
 # if you want to run a function from this file, add the function name as the first parameter
 # the rest of the parameters will be forwarded to the called function (files as a full path)
