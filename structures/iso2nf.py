@@ -70,6 +70,8 @@ def read_mech_input(path_to_frame):
 
         elif '      ELEM' in lin:  # add first element name to each profile
             element = lin.split()
+            if len(element) > 7:
+                continue
             if len(tems[element[-1]]) < 3:
                 number = element[1]
                 for i in range(5 - len(number)):
@@ -630,13 +632,13 @@ class Check:
 
 # run a single simulation with natural fire model
 # (have to be already prepared/calculated for FISO)
-def run_user_mode(sim_no, arguments):
+def run_user_mode(sim_no, arguments, check=True):
     start = sec()
     m = Mechanical(arguments.results[sim_no], fire_model=arguments.model)
     m.make_thermals(arguments.config)
 
     # check the set up
-    Check(m).full_mech()
+    Check(m).full_mech() if check else print('[WARNING] No checking routine applied')
 
     # run thermal analyses
     for t in m.thermals:
@@ -689,7 +691,7 @@ if __name__ == '__main__':
     args = get_arguments(argv[1:])
 
     for n in range(len(args.results)):
-        run_user_mode(n, args)
+        run_user_mode(n, args, check=False)
 
     print('\n==================\nThank you for using our tools. We will appreciate your feedback and bug reports'
           ' on github: https://www.github.com/kowalskiw/fireeng-tools\n'
