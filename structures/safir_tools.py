@@ -1,6 +1,7 @@
 import subprocess
 import sys
 from os import getcwd, chdir
+from datetime import datetime as dt
 
 from xml.dom.minidom import parse as pxml
 from xml.etree import ElementTree
@@ -30,16 +31,19 @@ def repair_relax_in_xml(xml_file_path):
 
 # running SAFIR simulation
 def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True, fix_rlx=True):
-    in_file_path = input('[INPUT] Give me SAFIR input file to be run: ') if in_file_path == 'input' else in_file_path
-    
+    start = dt.now()
+    print(f'[INFO] Calculations started at {start}') if print_time else None
     backpath = getcwd()
     dirpath = dirname(in_file_path)
     chdir(dirpath)
     chid = basename(in_file_path)[:-3]
 
+    print(f'Reading {chid}.in file...')
     process = subprocess.Popen(' '.join([safir_exe_path, chid]), shell=False, stdout=subprocess.PIPE)
     print_all = False
     success = True
+    count = 0
+    # clear output
     while True:
         if process.poll() is not None:
             break
@@ -56,19 +60,21 @@ def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True
                 print_all = True
                 success = False
                 print('    ', output)
+            elif '======================' in output:
+                count += 1
             # check for timestep
             elif 'time' in output and print_time:
-                print('%s %s' % ('SAFIR started "{}" calculations: '.format(chid), output), end='\r')
+                print(f'SAFIR started "{chid}" (sim #{count}) calculations: {output[7:]}', end='\r')
 
     rc = process.poll()
     chdir(backpath)
 
-    if fix_rlx:
-        repair_relax('%s\\%s.XML' % (dirpath, chid))
-
+    print(f'[INFO] Computing time: {dt.now() - start}')
+    
     if not rc:
         if success:
             print('[OK] SAFIR finished "{}" calculations at'.format(chid))
+            repair_relax('%s\\%s.XML' % (dirpath, chid)) if fix_rlx else None
             return 0
         else:
             print('[WARNING] SAFIR finished "{}" calculations with error!'.format(chid))
@@ -232,7 +238,7 @@ class InFile:
 if __name__ == '__main__':
     try:
         function = sys.argv[1]
-        
+
         # change to full path if it is a file name
         args = []
         for arg in sys.argv[2:]:
