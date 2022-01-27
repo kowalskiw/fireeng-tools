@@ -159,13 +159,13 @@ class DummyShell:
                         ' POSITIONS OF THE NODES.\n',
                         ' =======================\n',
                         ' NUMBER OF POSITIONS:  51\n',
-                        ' -0.2500E+00 -0.2400E+00 -0.2300E+00 -0.2200E+00 -0.2100E+00 -0.2000E+00 -0.1900E+00 -0.1800E+00\n',
-                        ' -0.1700E+00 -0.1600E+00 -0.1500E+00 -0.1400E+00 -0.1300E+00 -0.1200E+00 -0.1100E+00 -0.1000E+00\n',
-                        ' -0.9000E-01 -0.8000E-01 -0.7000E-01 -0.6000E-01 -0.5000E-01 -0.4000E-01 -0.3000E-01 -0.2000E-01\n',
-                        ' -0.1000E-01  0.0000E+00  0.1000E-01  0.2000E-01  0.3000E-01  0.4000E-01  0.5000E-01  0.6000E-01\n',
-                        '  0.7000E-01  0.8000E-01  0.9000E-01  0.1000E+00  0.1100E+00  0.1200E+00  0.1300E+00  0.1400E+00\n',
-                        '  0.1500E+00  0.1600E+00  0.1700E+00  0.1800E+00  0.1900E+00  0.2000E+00  0.2100E+00  0.2200E+00\n',
-                        '  0.2300E+00  0.2400E+00  0.2500E+00\n']
+                        ' -0.250E+00 -0.240E+00 -0.230E+00 -0.220E+00 -0.210E+00 -0.200E+00 -0.190E+00 -0.180E+00\n',
+                        ' -0.170E+00 -0.160E+00 -0.150E+00 -0.140E+00 -0.130E+00 -0.120E+00 -0.110E+00 -0.100E+00\n',
+                        ' -0.900E-01 -0.800E-01 -0.700E-01 -0.600E-01 -0.500E-01 -0.400E-01 -0.300E-01 -0.200E-01\n',
+                        ' -0.100E-01  0.000E+00  0.100E-01  0.200E-01  0.300E-01  0.400E-01  0.500E-01  0.600E-01\n',
+                        '  0.700E-01  0.800E-01  0.900E-01  0.100E+00  0.110E+00  0.120E+00  0.130E+00  0.140E+00\n',
+                        '  0.150E+00  0.160E+00  0.170E+00  0.180E+00  0.190E+00  0.200E+00  0.210E+00  0.220E+00\n',
+                        '  0.230E+00  0.240E+00  0.250E+00\n']
 
         self.no = number
         self.str_no = '0' * (5 - len(str(number))) + str(number)
@@ -243,15 +243,15 @@ class DummyShell:
 
             dummy_sh.insert(-1, '   '.join(l_line))
 
-        with open('{}\dummy_{}.in'.format(self.calcdir, self.str_no), 'w+') as d:
+        with open(f'{self.calcdir}\dummy_{self.str_no}.in', 'w+') as d:
             d.write(''.join(dummy_sh))
 
         if 'dummy.tsh' not in scandir(self.calcdir):
-            with open('{}\dummy.tsh'.format(self.calcdir), 'w') as d:
+            with open(f'{self.calcdir}\dummy.tsh', 'w') as d:
                 d.writelines(self.section)
 
     def run(self):
-        run_safir('{}\dummy_{}.in'.format(self.calcdir, self.str_no), fix_rlx=False)
+        run_safir(f'{self.calcdir}\dummy_{self.str_no}.in', fix_rlx=False)
 
 
 class DummyShellIGES(DummyShell):
@@ -334,7 +334,7 @@ class DummyShellIGES(DummyShell):
                 if all([isclose(self.etagsnodes[1][n_xtag * 3 + i], e[i], rel_tol=0.01) for i in range(0, 3)]):
                     edgetags.append(n[0][n_xtag])
 
-        print('{} nodes were constraint'.format(len(edgetags)))
+        print(f'{len(edgetags)} nodes were constraint')
 
         return list(set(edgetags))  # [edgenodetag1, edgenodetag2, ... edgenodetagn]
 
@@ -469,7 +469,7 @@ class DummyShellDXF(DummyShell):
             try:
                 edgetags.append(self.nodes.index(en) + 1)
             except ValueError:
-                print('[WARNING] {} is not matched as a valid node in dummy shell mesh'.format(en))
+                print(f'[WARNING] {en} is not matched as a valid node in dummy shell mesh')
 
         gmsh.finalize()
 
@@ -478,7 +478,7 @@ class DummyShellDXF(DummyShell):
 
 class Convert:
     def __init__(self, path_to_areas: str, path_to_in: str):
-        self.paths = {'areas': path_to_areas, 'infile': path_to_in, 'calc': '{}\\out-files'.format(dirname(path_to_in))}
+        self.paths = {'areas': path_to_areas, 'infile': path_to_in, 'calc': f'{dirname(path_to_in)}\\out-files'}
         try:
             rmtree(self.paths['calc'], ignore_errors=True)
         except FileNotFoundError:
@@ -494,7 +494,7 @@ class Convert:
     def get_edges(self):
         gmsh.initialize()
         gmsh.model.add('edges')
-        gmsh.model.occ.importShapes('{}\\edges.igs'.format(self.paths['areas']))
+        gmsh.model.occ.importShapes(f'{self.paths["areas"]}\\edges.igs')
         gmsh.model.occ.synchronize()
 
         # find nodes of meshed edgelines
@@ -505,7 +505,7 @@ class Convert:
         gmsh.finalize()
         # return edge nodes coordinates
         # edgenodescoords = [list(nodes[1][n:n + 3]) for n in range(0, 3 * len(nodes[0]), 3)]
-        return nodes #[list(nodes[1][n:n + 3]) for n in range(0, 3 * len(nodes[0]), 3)]
+        return nodes    # [list(nodes[1][n:n + 3]) for n in range(0, 3 * len(nodes[0]), 3)]
 
     def prepare_dummies(self):
         i = 0
@@ -586,7 +586,7 @@ class Convert:
 
         # map beam elements to lineloads from each dummyfile
         for dummy in reactions:
-            converted_loads = ['   FUNCTION {}\n'.format(function), '  END_LOAD\n']
+            converted_loads = [f'   FUNCTION {function}\n', '  END_LOAD\n']
             for be in infile.beams:
                 # start, middle, end point of beam element like [x,y,z]
                 # convert node_no to its position in node list (-1)
@@ -594,17 +594,17 @@ class Convert:
                 elem_loads = map_l2e(points, dummy[1:])     # mapping function
                 converted_loads.insert(-1, load_template.format(be[0], *elem_loads)) if elem_loads else None
 
-            print('[INFO] %i elements mapped with dummy_%s' % (len(converted_loads) - 2, dummy[0]))
+            print(f'[INFO] {len(converted_loads) - 2} elements mapped with dummy_{dummy[0]}')
 
             # make new IN file with converted loads
             for line in lloaded:
                 if 'NLOAD' in line:
-                    lloaded[lloaded.index(line)] = '     NLOAD    {}\n'.format(int(line.split()[-1]) + 1)
+                    lloaded[lloaded.index(line)] = f'     NLOAD    {int(line.split()[-1]) + 1}\n'
                 elif 'LOADS' in line:
                     lloaded = lloaded[:lloaded.index(line) + 1] + converted_loads + lloaded[lloaded.index(line) + 1:]
                     break
 
-        with open('{}\{}_ll.in'.format(self.paths['calc'], infile.chid), 'w') as file:
+        with open(f'{self.paths["calc"]}\\{infile.chid}_ll.in', 'w') as file:
             file.write(''.join(lloaded))
 
     def convert(self):

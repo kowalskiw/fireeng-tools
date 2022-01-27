@@ -69,15 +69,14 @@ def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True
     rc = process.poll()
     chdir(backpath)
 
-    print(f'[INFO] Computing time: {dt.now() - start}')
-    
     if not rc:
         if success:
-            print('[OK] SAFIR finished "{}" calculations at'.format(chid))
-            repair_relax('%s\\%s.XML' % (dirpath, chid)) if fix_rlx else None
+            print(f'[OK] SAFIR finished {count} "{chid}" calculations at')
+            print(f'[INFO] Computing time: {dt.now() - start}')
+            repair_relax(f'{dirpath}\\{chid}.XML') if fix_rlx else None
             return 0
         else:
-            print('[WARNING] SAFIR finished "{}" calculations with error!'.format(chid))
+            print(f'[WARNING] SAFIR finished "{chid}" calculations with error!')
             return -1
 
 
@@ -96,10 +95,10 @@ def repair_relax(path_to_xml, copyxml=True):
 
             index += 1
 
-    with open('%s_fixed.XML' % path_to_xml[:-4] if copyxml else path_to_xml, 'w') as newxml:
+    with open(f'{path_to_xml[:-4]}_fixed.XML' if copyxml else path_to_xml, 'w') as newxml:
         newxml.writelines(rlx_lines)
 
-    print('[OK] %i XML file lines fixed (relaxations bug)' % fixed)
+    print(f'[OK] {fixed} XML file lines fixed (relaxations bug)')
 
     return 0
 

@@ -589,13 +589,13 @@ class Check:
 
 # run a single simulation with natural fire model
 # (have to be already prepared/calculated for FISO)
-def run_user_mode(sim_no, arguments, check=True):
+def run_user_mode(sim_no, arguments):
     start = sec()
     m = Mechanical(arguments.results[sim_no], fire_model=arguments.model)
     m.make_thermals(arguments.config)
 
     # check the set up
-    Check(m).full_mech() if check else print('[WARNING] No checking routine applied')
+    Check(m).full_mech() if arguments.check else print('[WARNING] No checking routine applied')
 
     # run thermal analyses
     for t in m.thermals:
@@ -622,6 +622,7 @@ def get_arguments(from_argv):
                                               'cfd/fds)', default='locafi')
     parser.add_argument('-r', '--results', nargs='+', help='Paths to mechanical analysis IN files (one scenario ->'
                                                            'one IN file)', required=True)
+    parser.add_argument('-ch', '--check', help='Running checking functions before analyzing (boolean)', default=True)
     argums = parser.parse_args(args=from_argv)
 
     # change paths to absolute
@@ -648,7 +649,7 @@ if __name__ == '__main__':
     args = get_arguments(argv[1:])
 
     for n in range(len(args.results)):
-        run_user_mode(n, args, check=False)
+        run_user_mode(n, args)
 
     print('\n==================\nThank you for using our tools. We will appreciate your feedback and bug reports'
           ' on github: https://www.github.com/kowalskiw/fireeng-tools\n'
