@@ -1,0 +1,472 @@
+InputFile created with GiD-SAFIR_2016 Interface
+Safir_Thermal_Analysis
+Mesh_from_GID-Mesher
+
+     NNODE   144
+      NDIM    2
+   NDOFMAX    1
+       FROM    1   TO   144 STEP    1 NDDL    1
+   END_NDDL
+    NCORES           4
+  TEMPERAT
+      TETA        0.9
+  TINITIAL       20.0
+MAKE.TEM
+ NORENUM
+      NMAT 1
+  ELEMENTS
+     SOLID   172
+        NG    2
+     NVOID     0
+  END_ELEM
+     NODES
+      NODE     1     0.1000    -0.1000
+      NODE     2     0.0927    -0.0932
+      NODE     3     0.1000    -0.0900
+      NODE     4     0.0850    -0.1000
+      NODE     5     0.0937    -0.0855
+      NODE     6     0.0850    -0.0903
+      NODE     7     0.1000    -0.0800
+      NODE     8     0.0850    -0.0806
+      NODE     9     0.0937    -0.0758
+      NODE    10     0.1000    -0.0700
+      NODE    11     0.0850    -0.0709
+      NODE    12     0.0927    -0.0676
+      NODE    13     0.1000    -0.0600
+      NODE    14     0.0850    -0.0613
+      NODE    15     0.1000    -0.0500
+      NODE    16     0.0850    -0.0516
+      NODE    17     0.1000    -0.0400
+      NODE    18     0.0850    -0.0419
+      NODE    19     0.0850    -0.0322
+      NODE    20     0.1000    -0.0300
+      NODE    21     0.0850    -0.0225
+      NODE    22     0.1000    -0.0200
+      NODE    23     0.0913    -0.0150
+      NODE    24     0.0826    -0.0135
+      NODE    25     0.1000    -0.0100
+      NODE    26     0.0850    -0.0113
+      NODE    27     0.0923    -0.0072
+      NODE    28     0.0760    -0.0069
+      NODE    29     0.1000     0.0000
+      NODE    30     0.0670    -0.0045
+      NODE    31     0.0850     0.0000
+      NODE    32     0.0567    -0.0045
+      NODE    33     0.0923     0.0073
+      NODE    34     0.0464    -0.0045
+      NODE    35     0.0760     0.0069
+      NODE    36     0.0670     0.0045
+      NODE    37     0.1000     0.0100
+      NODE    38     0.0850     0.0113
+      NODE    39     0.0567     0.0045
+      NODE    40     0.0826     0.0135
+      NODE    41     0.0361    -0.0045
+      NODE    42     0.0913     0.0150
+      NODE    43     0.0464     0.0045
+      NODE    44     0.1000     0.0200
+      NODE    45     0.0258    -0.0045
+      NODE    46     0.0361     0.0045
+      NODE    47     0.0850     0.0225
+      NODE    48     0.0155    -0.0045
+      NODE    49     0.0258     0.0045
+      NODE    50     0.1000     0.0300
+      NODE    51     0.0850     0.0322
+      NODE    52     0.0155     0.0045
+      NODE    53     0.0052    -0.0045
+      NODE    54     0.1000     0.0400
+      NODE    55     0.0052     0.0045
+      NODE    56    -0.0052    -0.0045
+      NODE    57     0.0850     0.0419
+      NODE    58    -0.0052     0.0045
+      NODE    59    -0.0155    -0.0045
+      NODE    60     0.1000     0.0500
+      NODE    61     0.0850     0.0516
+      NODE    62    -0.0155     0.0045
+      NODE    63    -0.0258    -0.0045
+      NODE    64     0.1000     0.0600
+      NODE    65     0.0850     0.0612
+      NODE    66    -0.0258     0.0045
+      NODE    67    -0.0361    -0.0045
+      NODE    68     0.0927     0.0676
+      NODE    69     0.1000     0.0700
+      NODE    70    -0.0361     0.0045
+      NODE    71     0.0850     0.0709
+      NODE    72    -0.0464    -0.0045
+      NODE    73     0.0937     0.0758
+      NODE    74    -0.0464     0.0045
+      NODE    75     0.1000     0.0800
+      NODE    76     0.0850     0.0806
+      NODE    77    -0.0567    -0.0045
+      NODE    78    -0.0850    -0.1000
+      NODE    79    -0.0850    -0.0903
+      NODE    80     0.0937     0.0855
+      NODE    81    -0.0850    -0.0806
+      NODE    82    -0.0850    -0.0709
+      NODE    83    -0.0567     0.0045
+      NODE    84    -0.0850    -0.0612
+      NODE    85     0.1000     0.0900
+      NODE    86     0.0850     0.0903
+      NODE    87    -0.0850    -0.0516
+      NODE    88    -0.0670    -0.0045
+      NODE    89    -0.0927    -0.0932
+      NODE    90     0.0927     0.0932
+      NODE    91    -0.0850    -0.0419
+      NODE    92    -0.0937    -0.0855
+      NODE    93    -0.0937    -0.0758
+      NODE    94    -0.0927    -0.0676
+      NODE    95    -0.0670     0.0045
+      NODE    96    -0.0850    -0.0322
+      NODE    97    -0.0760    -0.0069
+      NODE    98     0.1000     0.1000
+      NODE    99    -0.1000    -0.1000
+      NODE   100    -0.1000    -0.0900
+      NODE   101     0.0850     0.1000
+      NODE   102    -0.0850    -0.0225
+      NODE   103    -0.1000    -0.0800
+      NODE   104    -0.0826    -0.0135
+      NODE   105    -0.1000    -0.0700
+      NODE   106    -0.1000    -0.0600
+      NODE   107    -0.0850    -0.0113
+      NODE   108    -0.0760     0.0069
+      NODE   109    -0.1000    -0.0500
+      NODE   110    -0.1000    -0.0400
+      NODE   111    -0.0913    -0.0150
+      NODE   112    -0.0850     0.0000
+      NODE   113    -0.1000    -0.0300
+      NODE   114    -0.0923    -0.0073
+      NODE   115    -0.0826     0.0135
+      NODE   116    -0.1000    -0.0200
+      NODE   117    -0.0850     0.0113
+      NODE   118    -0.1000    -0.0100
+      NODE   119    -0.0923     0.0073
+      NODE   120    -0.0850     0.0225
+      NODE   121    -0.0913     0.0150
+      NODE   122    -0.1000     0.0000
+      NODE   123    -0.0850     0.0322
+      NODE   124    -0.1000     0.0100
+      NODE   125    -0.0850     0.0419
+      NODE   126    -0.1000     0.0200
+      NODE   127    -0.1000     0.0300
+      NODE   128    -0.0850     0.0516
+      NODE   129    -0.1000     0.0400
+      NODE   130    -0.0850     0.0613
+      NODE   131    -0.1000     0.0500
+      NODE   132    -0.0850     0.0709
+      NODE   133    -0.0927     0.0676
+      NODE   134    -0.1000     0.0600
+      NODE   135    -0.0850     0.0806
+      NODE   136    -0.0937     0.0758
+      NODE   137    -0.1000     0.0700
+      NODE   138    -0.0850     0.0903
+      NODE   139    -0.0937     0.0855
+      NODE   140    -0.1000     0.0800
+      NODE   141    -0.0850     0.1000
+      NODE   142    -0.0927     0.0932
+      NODE   143    -0.1000     0.0900
+      NODE   144    -0.1000     0.1000
+  NODELINE          0.0000     0.0000
+     YC_ZC          0.0000     0.0000
+ FIXATIONS
+   END_FIX
+NODOFSOLID
+      ELEM       1     141   138   142    0       1     0.
+      ELEM       2     135   132   136    0       1     0.
+      ELEM       3     130   128   134    0       1     0.
+      ELEM       4     125   123   129    0       1     0.
+      ELEM       5     138   135   139    0       1     0.
+      ELEM       6     132   130   133    0       1     0.
+      ELEM       7     128   125   131    0       1     0.
+      ELEM       8     123   120   127    0       1     0.
+      ELEM       9     142   138   139    0       1     0.
+      ELEM      10     142   139   143    0       1     0.
+      ELEM      11     143   139   140    0       1     0.
+      ELEM      12     142   143   144    0       1     0.
+      ELEM      13     140   139   136    0       1     0.
+      ELEM      14     140   136   137    0       1     0.
+      ELEM      15     142   144   141    0       1     0.
+      ELEM      16     137   136   133    0       1     0.
+      ELEM      17     137   133   134    0       1     0.
+      ELEM      18     134   133   130    0       1     0.
+      ELEM      19     136   139   135    0       1     0.
+      ELEM      20     133   136   132    0       1     0.
+      ELEM      21     122   124   119    0       1     0.
+      ELEM      22     129   131   125    0       1     0.
+      ELEM      23     119   124   121    0       1     0.
+      ELEM      24     121   124   126    0       1     0.
+      ELEM      25     119   121   117    0       1     0.
+      ELEM      26     117   121   120    0       1     0.
+      ELEM      27     119   117   112    0       1     0.
+      ELEM      28     119   112   122    0       1     0.
+      ELEM      29     120   121   126    0       1     0.
+      ELEM      30     126   127   120    0       1     0.
+      ELEM      31     131   134   128    0       1     0.
+      ELEM      32     127   129   123    0       1     0.
+      ELEM      33     102    96   113    0       1     0.
+      ELEM      34      91    87   109    0       1     0.
+      ELEM      35      84    82    94    0       1     0.
+      ELEM      36      81    79    92    0       1     0.
+      ELEM      37      96    91   110    0       1     0.
+      ELEM      38      87    84   106    0       1     0.
+      ELEM      39      82    81    93    0       1     0.
+      ELEM      40      79    78    89    0       1     0.
+      ELEM      41      94    82    93    0       1     0.
+      ELEM      42      94    93   105    0       1     0.
+      ELEM      43      94   105   106    0       1     0.
+      ELEM      44     105    93   103    0       1     0.
+      ELEM      45      94   106    84    0       1     0.
+      ELEM      46     103    93    92    0       1     0.
+      ELEM      47     103    92   100    0       1     0.
+      ELEM      48     100    92    89    0       1     0.
+      ELEM      49     100    89    99    0       1     0.
+      ELEM      50      99    89    78    0       1     0.
+      ELEM      51      92    93    81    0       1     0.
+      ELEM      52      89    92    79    0       1     0.
+      ELEM      53     106   109    87    0       1     0.
+      ELEM      54     116   118   111    0       1     0.
+      ELEM      55     111   118   114    0       1     0.
+      ELEM      56     116   111   102    0       1     0.
+      ELEM      57     102   111   107    0       1     0.
+      ELEM      58     107   111   114    0       1     0.
+      ELEM      59     107   114   112    0       1     0.
+      ELEM      60     112   114   122    0       1     0.
+      ELEM      61     114   118   122    0       1     0.
+      ELEM      62     110   113    96    0       1     0.
+      ELEM      63     109   110    91    0       1     0.
+      ELEM      64     113   116   102    0       1     0.
+      ELEM      65      47    51    50    0       1     0.
+      ELEM      66      57    61    60    0       1     0.
+      ELEM      67      65    71    68    0       1     0.
+      ELEM      68      76    86    80    0       1     0.
+      ELEM      69      51    57    54    0       1     0.
+      ELEM      70      61    65    64    0       1     0.
+      ELEM      71      71    76    73    0       1     0.
+      ELEM      72      86   101    90    0       1     0.
+      ELEM      73      68    71    73    0       1     0.
+      ELEM      74      68    73    69    0       1     0.
+      ELEM      75      68    69    64    0       1     0.
+      ELEM      76      69    73    75    0       1     0.
+      ELEM      77      75    73    80    0       1     0.
+      ELEM      78      68    64    65    0       1     0.
+      ELEM      79      75    80    85    0       1     0.
+      ELEM      80      85    80    90    0       1     0.
+      ELEM      81      85    90    98    0       1     0.
+      ELEM      82      98    90   101    0       1     0.
+      ELEM      83      80    73    76    0       1     0.
+      ELEM      84      90    80    86    0       1     0.
+      ELEM      85      64    60    61    0       1     0.
+      ELEM      86      44    37    42    0       1     0.
+      ELEM      87      42    37    33    0       1     0.
+      ELEM      88      44    42    47    0       1     0.
+      ELEM      89      47    42    38    0       1     0.
+      ELEM      90      38    42    33    0       1     0.
+      ELEM      91      38    33    31    0       1     0.
+      ELEM      92      31    33    29    0       1     0.
+      ELEM      93      33    37    29    0       1     0.
+      ELEM      94      54    50    51    0       1     0.
+      ELEM      95      60    54    57    0       1     0.
+      ELEM      96      50    44    47    0       1     0.
+      ELEM      97       4     6     2    0       1     0.
+      ELEM      98       8    11     9    0       1     0.
+      ELEM      99      14    16    13    0       1     0.
+      ELEM     100      18    19    17    0       1     0.
+      ELEM     101       6     8     5    0       1     0.
+      ELEM     102      11    14    12    0       1     0.
+      ELEM     103      16    18    15    0       1     0.
+      ELEM     104      19    21    20    0       1     0.
+      ELEM     105       2     6     5    0       1     0.
+      ELEM     106       2     5     3    0       1     0.
+      ELEM     107       3     5     7    0       1     0.
+      ELEM     108       2     3     1    0       1     0.
+      ELEM     109       7     5     9    0       1     0.
+      ELEM     110       7     9    10    0       1     0.
+      ELEM     111       2     1     4    0       1     0.
+      ELEM     112      10     9    12    0       1     0.
+      ELEM     113      10    12    13    0       1     0.
+      ELEM     114      13    12    14    0       1     0.
+      ELEM     115       9     5     8    0       1     0.
+      ELEM     116      12     9    11    0       1     0.
+      ELEM     117      29    25    27    0       1     0.
+      ELEM     118      17    15    18    0       1     0.
+      ELEM     119      27    25    23    0       1     0.
+      ELEM     120      23    25    22    0       1     0.
+      ELEM     121      27    23    26    0       1     0.
+      ELEM     122      26    23    21    0       1     0.
+      ELEM     123      27    26    31    0       1     0.
+      ELEM     124      27    31    29    0       1     0.
+      ELEM     125      21    23    22    0       1     0.
+      ELEM     126      22    20    21    0       1     0.
+      ELEM     127      15    13    16    0       1     0.
+      ELEM     128      20    17    19    0       1     0.
+      ELEM     129     120   115   117    0       1     0.
+      ELEM     130     117   115   108    0       1     0.
+      ELEM     131      35    40    31    0       1     0.
+      ELEM     132      28    30    35    0       1     0.
+      ELEM     133     108    95    97    0       1     0.
+      ELEM     134      21    24    26    0       1     0.
+      ELEM     135      26    24    28    0       1     0.
+      ELEM     136      97   104   112    0       1     0.
+      ELEM     137      40    47    38    0       1     0.
+      ELEM     138      40    38    31    0       1     0.
+      ELEM     139      88    97    95    0       1     0.
+      ELEM     140      88    95    77    0       1     0.
+      ELEM     141      36    35    30    0       1     0.
+      ELEM     142      36    30    39    0       1     0.
+      ELEM     143     104   102   107    0       1     0.
+      ELEM     144     104   107   112    0       1     0.
+      ELEM     145     117   108   112    0       1     0.
+      ELEM     146      26    28    31    0       1     0.
+      ELEM     147      95    83    77    0       1     0.
+      ELEM     148      77    83    72    0       1     0.
+      ELEM     149      52    49    45    0       1     0.
+      ELEM     150      45    49    41    0       1     0.
+      ELEM     151      66    62    59    0       1     0.
+      ELEM     152      59    62    56    0       1     0.
+      ELEM     153      74    70    67    0       1     0.
+      ELEM     154      67    70    63    0       1     0.
+      ELEM     155      46    43    34    0       1     0.
+      ELEM     156      34    43    32    0       1     0.
+      ELEM     157      48    53    55    0       1     0.
+      ELEM     158      55    53    58    0       1     0.
+      ELEM     159      83    74    72    0       1     0.
+      ELEM     160      72    74    67    0       1     0.
+      ELEM     161      49    46    41    0       1     0.
+      ELEM     162      41    46    34    0       1     0.
+      ELEM     163      45    48    52    0       1     0.
+      ELEM     164      52    48    55    0       1     0.
+      ELEM     165      62    58    56    0       1     0.
+      ELEM     166      56    58    53    0       1     0.
+      ELEM     167      30    32    39    0       1     0.
+      ELEM     168      39    32    43    0       1     0.
+      ELEM     169      59    63    66    0       1     0.
+      ELEM     170      66    63    70    0       1     0.
+      ELEM     171      35    31    28    0       1     0.
+      ELEM     172      97   112   108    0       1     0.
+  FRONTIER
+   F     1 FISO NO NO NO 
+   F     2 FISO NO NO NO 
+   F     3 FISO NO NO NO 
+   F     4 FISO NO NO NO 
+   F     5 FISO NO NO NO 
+   F     6 FISO NO NO NO 
+   F     7 FISO NO NO NO 
+   F     8 FISO NO NO NO 
+   F    11 NO NO FISO NO
+   F    12 NO FISO NO NO 
+   F    14 NO NO FISO NO
+   F    15 NO FISO NO NO 
+   F    17 NO NO FISO NO
+   F    21 FISO NO NO NO 
+   F    22 FISO NO NO NO 
+   F    24 NO FISO NO NO 
+   F    30 FISO NO NO NO 
+   F    31 FISO NO NO NO 
+   F    32 FISO NO NO NO 
+   F    33 FISO NO NO NO 
+   F    34 FISO NO NO NO 
+   F    35 FISO NO NO NO 
+   F    36 FISO NO NO NO 
+   F    37 FISO NO NO NO 
+   F    38 FISO NO NO NO 
+   F    39 FISO NO NO NO 
+   F    40 FISO NO NO NO 
+   F    43 NO FISO NO NO 
+   F    44 NO NO FISO NO
+   F    47 NO NO FISO NO
+   F    49 NO NO FISO NO
+   F    50 NO NO FISO NO
+   F    53 FISO NO NO NO 
+   F    54 FISO NO NO NO 
+   F    61 NO FISO NO NO 
+   F    62 FISO NO NO NO 
+   F    63 FISO NO NO NO 
+   F    64 FISO NO NO NO 
+   F    65 FISO NO NO NO 
+   F    66 FISO NO NO NO 
+   F    67 FISO NO NO NO 
+   F    68 FISO NO NO NO 
+   F    69 FISO NO NO NO 
+   F    70 FISO NO NO NO 
+   F    71 FISO NO NO NO 
+   F    72 FISO NO NO NO 
+   F    75 NO FISO NO NO 
+   F    76 NO NO FISO NO
+   F    79 NO NO FISO NO
+   F    81 NO NO FISO NO
+   F    82 NO NO FISO NO
+   F    85 FISO NO NO NO 
+   F    86 FISO NO NO NO 
+   F    93 NO FISO NO NO 
+   F    94 FISO NO NO NO 
+   F    95 FISO NO NO NO 
+   F    96 FISO NO NO NO 
+   F    97 FISO NO NO NO 
+   F    98 FISO NO NO NO 
+   F    99 FISO NO NO NO 
+   F   100 FISO NO NO NO 
+   F   101 FISO NO NO NO 
+   F   102 FISO NO NO NO 
+   F   103 FISO NO NO NO 
+   F   104 FISO NO NO NO 
+   F   107 NO NO FISO NO
+   F   108 NO FISO NO NO 
+   F   110 NO NO FISO NO
+   F   111 NO FISO NO NO 
+   F   113 NO NO FISO NO
+   F   117 FISO NO NO NO 
+   F   118 FISO NO NO NO 
+   F   120 NO FISO NO NO 
+   F   126 FISO NO NO NO 
+   F   127 FISO NO NO NO 
+   F   128 FISO NO NO NO 
+   F   129 FISO NO NO NO 
+   F   130 NO FISO NO NO 
+   F   131 FISO NO NO NO 
+   F   132 FISO NO NO NO 
+   F   133 FISO NO NO NO 
+   F   134 FISO NO NO NO 
+   F   135 NO FISO NO NO 
+   F   136 FISO NO NO NO 
+   F   137 FISO NO NO NO 
+   F   139 FISO NO NO NO 
+   F   140 NO NO FISO NO
+   F   141 FISO NO NO NO 
+   F   142 NO NO FISO NO
+   F   143 FISO NO NO NO 
+   F   147 FISO NO NO NO 
+   F   148 NO NO FISO NO
+   F   149 FISO NO NO NO 
+   F   150 NO NO FISO NO
+   F   151 FISO NO NO NO 
+   F   152 NO NO FISO NO
+   F   153 FISO NO NO NO 
+   F   154 NO NO FISO NO
+   F   155 FISO NO NO NO 
+   F   156 NO NO FISO NO
+   F   157 FISO NO NO NO 
+   F   158 NO NO FISO NO
+   F   159 FISO NO NO NO 
+   F   160 NO NO FISO NO
+   F   161 FISO NO NO NO 
+   F   162 NO NO FISO NO
+   F   163 FISO NO NO NO 
+   F   164 NO NO FISO NO
+   F   165 FISO NO NO NO 
+   F   166 NO NO FISO NO
+   F   167 FISO NO NO NO 
+   F   168 NO NO FISO NO
+   F   169 FISO NO NO NO 
+   F   170 NO NO FISO NO
+ END_FRONT
+  SYMMETRY
+   END_SYM
+ PRECISION     1.E-3
+ MATERIALS
+STEELEC3EN
+               25.00       4.00       0.70
+      TIME
+        12       1200
+  END_TIME
+IMPRESSION
+ TIMEPRINT 
+        60       1200
+END_TIMEPR
