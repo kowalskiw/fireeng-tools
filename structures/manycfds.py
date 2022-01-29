@@ -2,20 +2,37 @@
 import copy
 import safir_tools
 import shutil
+import sys
 
+def find_transfer_domain(transfer_file="manycfds_files\\cfd_1.txt"):
+    #domain = []     # [XA, XB, YA, YB, ZA, ZB]
+    with open(transfer_file, 'r+') as file:
+        transfer_data_file = file.readlines()
+        for num in range(len(transfer_data_file)):
+            if 'XYZ_INTENSITIES' in transfer_data_file[num]:
+                start = num +1
+                break
+        for num in range(len(transfer_data_file))[start:]:
+            if 'NI' in transfer_data_file[num]:
+                end = num -1
+                break
+        #print(start, end) # czy bedziemy operować potem na liniach XYZ INTENSITIES
 
-# def find_transfer_domain(transfer_file):
-#     domain = []     # [XA, XB, YA, YB, ZA, ZB]
-#
-#     # tutaj znajduje granice domeny (box) pliku transferowego
-#
-#     return domain
-import os.path
+    all_x, all_y, all_z = [] ,[], []
+
+    for xyzline in transfer_data_file[start:end]:
+        x,y,z = xyzline.split()
+        all_x.append(x)
+        all_y.append(y)
+        all_z.append(z)
+    domain = [min(all_x), max(all_x),min(all_y),max(all_y),  min(all_z), max(all_z)]
+    # tutaj znajduje granice domeny (box) pliku transferowego
+    return domain
 
 #pwd = "D:\ConsultRisk\\fireeng-tools\structures\\" ---- local ----
 transfer = "D:\\ConsultRisk\\Warsztaty\\projects\\"
 config = "D:\\ConsultRisk\\Warsztaty\\projects\\tem_many\\"
-def main(transfer_dir=transfer, config_dir=config, mechanical_input_file = "manycfds_files\\frame.in"):
+def main(transfer_dir=transfer, config_dir=config, mechanical_input_file = "manycfds_files\\frame.index"):
     #os.chdir(pwd+mechanical_input_file)
     beams_num = 2 # klasa InFile powinna posiadać atrybut: liczbę beamsów - może są ale nie widzę
     # 0. chdir(mechanical_input_file) -> DONE
@@ -25,12 +42,13 @@ def main(transfer_dir=transfer, config_dir=config, mechanical_input_file = "many
         start_file = file.readlines()
         index = [x for x in range(len(start_file)) if 'NODOFBEAM' in start_file[x]][0] #find start of beam informations
         add_rows(start_file, beams_num, index)
-        double_beam_num(start_file)
+        double_beam_num(start_file, inFile)
         try:
             copy_files(config_dir, inFile.beamparameters['beamtypes'], 'D:\\ConsultRisk\\Warsztaty\\projects\\new\\')
-            print('poszło')
+            print('File copied')
         except:
-            "dupa"
+            print("Something went wrong during copying")
+        # do jakiego plkiku mają byc zapisywane dane? nadpisywane do tego samego?
 
 def get_info_from_infile(mechanical_input_file = "manycfds_files/frame.in"): 
     """
@@ -38,7 +56,6 @@ def get_info_from_infile(mechanical_input_file = "manycfds_files/frame.in"):
     """
     with open(mechanical_input_file, 'r+') as file:
         primary = safir_tools.InFile('dummy', file.readlines())    
-        print(primary.__dict__['beamparameters']) 
         return primary
 
 def add_rows(file_read, num_of_beams, index):
@@ -56,20 +73,19 @@ def add_rows(file_read, num_of_beams, index):
     file_read.insert(end, "\n".join(data_add)) 
     return file_read
 
-def double_beam_num(file_lines):
-    line_params = file_lines[15].split()    #question? - is BEAM can appear on other line than 15?
+def double_beam_num(file_lines, inFile):
+    beamline = file_lines[inFile.beamparameters['beamline']] #line where BEAM appears
+    line_params = beamline.split()   
     line_param_num = line_params[2]
     doubled_param = int(line_param_num)*2
-    file_lines[15] = file_lines[15].replace(line_param_num,  str(doubled_param))
+    beamline = beamline.replace(line_param_num,  str(doubled_param))
     return file_lines       
 
 
 def copy_files(config_dir, mechanical_input_files, dst_dir):
     for file in mechanical_input_files:
-        print(file)
+        file =file[:-3]+'in'
         shutil.copyfile(config_dir+file, dst_dir+'cfd_'+file)   #w folderze config dir znajdują sie pliki .tem
-        print(config_dir+file)
-        print(dst_dir+'cfd_'+file)
 
 
 
@@ -228,4 +244,5 @@ def copy_files(config_dir, mechanical_input_files, dst_dir):
 """
 
 if __name__ == '__main__':
-    main()
+    arguments = sys.argv[1:]
+    main(*arguments)

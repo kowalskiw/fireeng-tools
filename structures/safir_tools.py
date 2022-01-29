@@ -235,9 +235,9 @@ class InFile:
 
     def get_beamparameters(self):
         beamparameters = {}
-        beamparameters['index'] = [x for x in range(len(self.file_lines)) if 'NODOFBEAM' in self.file_lines[x]][0] #where NODOFBEAM appears
-       
         lines = 0
+
+        beamparameters['index'] = [x for x in range(len(self.file_lines)) if 'NODOFBEAM' in self.file_lines[x]][0] #where NODOFBEAM appears
         beamparameters['beamtypes']= []
         for line in self.file_lines[beamparameters['index']+1:]: #how many lines till ELEM appears- beams ends (every beam has 3 lines)
             if "ELEM" not in line:
@@ -249,7 +249,10 @@ class InFile:
             else: break
         beamparameters['beamnumber'] = int(lines/3) 
 
+        beamparameters['beamline'] = [x for x in range(len(self.file_lines)) if 'BEAM' in self.file_lines[x]][0]  #where beam line appears (begining of the file)
+
         return beamparameters
+
 
 # if you want to run a function from this file, add the function name as the first parameter
 # the rest of the parameters will be forwarded to the called function (files as a full path)
