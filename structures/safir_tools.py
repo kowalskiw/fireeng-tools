@@ -236,20 +236,22 @@ class InFile:
     def get_beamparameters(self):
         beamparameters = {}
         lines = 0
-
+        
         beamparameters['index'] = [x for x in range(len(self.file_lines)) if 'NODOFBEAM' in self.file_lines[x]][0] #where NODOFBEAM appears
         beamparameters['beamtypes']= []
-        for line in self.file_lines[beamparameters['index']+1:]: #how many lines till ELEM appears- beams ends (every beam has 3 lines)
+        beamparameters['beamnumber'] = int(lines/3)
+        beamparameters['beamline'] = [x for x in range(len(self.file_lines)) if 'BEAM' in self.file_lines[x]][0]  #where beam line appears (begining of the file)
+        beamparameters['elemstart']= 0
+
+        for line in self.file_lines[beamparameters['index']+1:]:#how many lines till ELEM appears- beams ends (every beam has 3 lines)
             if "ELEM" not in line:
                 if line.endswith(".tem\n"):
                     beamparameters['beamtypes'].append(line[:-1]) 
                 if line.endswith(".tem"):
                     beamparameters['beamtypes'].append(line) # question? - are here possibilities to have line ending without \n ?   
                 lines+=1
-            else: break
-        beamparameters['beamnumber'] = int(lines/3) 
-
-        beamparameters['beamline'] = [x for x in range(len(self.file_lines)) if 'BEAM' in self.file_lines[x]][0]  #where beam line appears (begining of the file)
+            else:
+                beamparameters['elemstart'] = beamparameters['index']+2+lines
 
         return beamparameters
 
