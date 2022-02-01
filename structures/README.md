@@ -19,6 +19,10 @@ Those scripts are not a part of the software. Nevertheless, some can be used gen
 * `manycfds.py` - calculating thermal response with more than one CFD transfer file
 
 * `part_radf.py` - adjusting FDS transfer files (&RADF product) if FDS calculation has been stopped before T_RADF_END
+
+* `alotofloacfis.py` - adjusting ignition times of multiple localized fires to tend to given summary HRR curve
+
+
 Link to SAFIR® official website: https://www.uee.uliege.be/cms/c_4016386/en/safir
 
 
