@@ -6,17 +6,8 @@ import sys
 import os
 
  
-
-#pwd = "D:\ConsultRisk\\fireeng-tools\structures\\" ---- local ----
-main_dir ="D:\\ConsultRisk\\Warsztaty\\projects\\many\\"
-working_dir = main_dir+'working_dir'+'\\'
-transfer = main_dir+'transfer'+'\\'
-config = main_dir+'config'+'\\'
-
-#dst='D:\\ConsultRisk\\Warsztaty\\projects\\new\\'
-
-def main(transfer_dir=transfer, config_dir=config, mechanical_input_file = working_dir+"frame.in"):
-    #working dir - tam gdzie znajduje się mechanical input file
+def main(transfer_dir, config_dir, mechanical_input_file):
+    working_dir = os.path.dirname(mechanical_input_file)+'//' 
     #os.chdir(pwd+mechanical_input_file) # folder z mechanical input file
     # 0. chdir(mechanical_input_file) -> DONE
     # 1. załaduj plik mechanical_input_file (.IN) -frame.in ->DONE
@@ -24,29 +15,30 @@ def main(transfer_dir=transfer, config_dir=config, mechanical_input_file = worki
 
         inFile_backup =  get_info_from_infile(mechanical_input_file)
         inFile = get_info_from_infile(mechanical_input_file)
-
-        end = add_rows(inFile.file_lines, inFile.beamparameters['beamnumber'], inFile.beamparameters['index']) # getting an end of .tem's
+        
+        end = add_rows(inFile.file_lines, inFile.beamparameters['beamnumber'], inFile.beamparameters['index'])
         double_beam_num(inFile.file_lines, inFile)
-        # with open("app.txt", "a") as f:
-        #     for line in inFile.file_lines:
-        #         #print(line)
-        #         f.write(line)
       
         try:
-            copied = copy_files(config_dir, inFile.beamparameters['beamtypes'], working_dir)  # config dir - tam jest heb.200  # dst to working dir
+            copied = copy_files(config_dir, inFile.beamparameters['beamtypes'], working_dir)  
             print('File copied')
         except:
             print("Something went wrong during copying")
         
-        thermal_file = working_dir+copied[0]
-        new_cfd_infiles = []  # potrzdebne do change in np cgd_heb200.in funkcja Wojtka
-        change_in(working_dir+'cfd_heb200.in', inFile.beamparameters['beamtypes'], )
-        operate_on_cfd(inFile= inFile)
+        all_thermal_infiles = ['cfd_'+beam+'.in' for beam in inFile.beamparameters['beamtypes']]  
+        for thermal_infile in all_thermal_infiles:
+            change_in(inFile, working_dir+thermal_infile, inFile.beamparameters['beamtypes'])
+       
+        operate_on_cfd(inFile=inFile, transfer_dir = transfer_dir, working_dir = working_dir)
 
-        #print(inFile.__dict__['beamparameters'])
+        for file_in in all_thermal_infiles:
+            file =working_dir+file_in
+            safir_tools.run_safir(file)
+        
+       
         
 
-def get_info_from_infile(mechanical_input_file = working_dir+"frame.in"): 
+def get_info_from_infile(mechanical_input_file): 
     """
     InFile object is created based on *.in file 
     """
@@ -83,7 +75,7 @@ def double_beam_num(file_lines, inFile):
 def copy_files(config_dir, mechanical_input_files, dst_dir):
     copied_mechanical =[]
     for file in mechanical_input_files:
-        file =file[:-3]+'in'
+        file =file+'.in'
         modified = 'cfd_'+file
         copied_mechanical.append(modified)
         shutil.copyfile(config_dir+file, dst_dir+ modified)   #w folderze config dir znajdują sie pliki .tem
@@ -140,10 +132,8 @@ def copy_files(config_dir, mechanical_input_files, dst_dir):
 
     # 7. zmodyfikuj pliki 'cfd_*.in' za pomocą funkcji change_in (FISO -> CFD)
     
-def change_in(thermal_in_file, beamtypes, t_end=1200):
-    
-    beamtype = beamtypes.index(os.path.basename(thermal_in_file)[4:-3]+'.tem') + 1
-
+def change_in(inFile, thermal_in_file, beamtypes, t_end=1200):
+    beamtype = inFile.beamparameters['beamtypes'].index(os.path.basename(thermal_in_file)[4:-3])
     # open thermal analysis input file
     with open(thermal_in_file) as file:
         init = file.readlines()
@@ -193,7 +183,7 @@ def change_in(thermal_in_file, beamtypes, t_end=1200):
         file.writelines(init)
 
 
-def operate_on_cfd(inFile, transfer_dir=transfer, working_dir = working_dir):
+def operate_on_cfd(inFile, transfer_dir, working_dir):
     for transfer_file in enumerate(os.listdir(transfer_dir)):
         
         actual_file = transfer_dir+transfer_file[1]
@@ -226,6 +216,10 @@ def operate_on_cfd(inFile, transfer_dir=transfer, working_dir = working_dir):
         #domain_names = ['min_x', 'max_x', 'min_y', 'max_y',  'min_z', 'max_z']
         #coordinate_names = ['x','y','z']
 
+
+        """
+        FUNKCJA DODAJĄCA ELEMENTY ZNAJDUJĄCE SIĘ W DOMENIE
+        """
         for element in inFile.beams[:10]:
             first_node_id = element[1]
             last_node_id = element[3]
@@ -239,32 +233,34 @@ def operate_on_cfd(inFile, transfer_dir=transfer, working_dir = working_dir):
             ): elements_inside_domain.append(element[0])
         
         #print(elements_inside_domain)
-        elements_inside_domain =[2,3,4,5,6] # przykładowa lista, poprzednia pusta
+        # przykładowa lista, poprzednia pusta
+        
         #   for node in infile.nodes:
         #       node = [tag_węzła, [x, y, z]]
         #   jeśli element znajduje się w domenie:
         #       elements_inside_domain.append(tag_elementu)
-        #print(inFile.beamparameters['index'])
+        
        
         lines = 0
+        """
+        FUNKCJA ZMIENIAJĄCA id przekroju na koncu wiersza
+        """
         for line in inFile.file_lines[inFile.beamparameters['elemstart']:]:
             elem_data= line.split()
             #print(elem_data)
-            if int(elem_data[1]) in elements_inside_domain:
-                print('zgadza się')
-                actual_line = inFile.beamparameters['elemstart']+lines
-                print(actual_line)
-                inFile.file_lines[actual_line] = " ".join([str(x) for x in elem_data[:-1]], str(elem_data[-1]+len(inFile.beamparameters['beamtypes'])/2))
+            
+                #inFile.file_lines[actual_line] = " ".join([str(x) for x in elem_data[:-1]], str(elem_data[-1]+len(inFile.beamparameters['beamtypes'])/2))
             if 'ELEM' not in line:
-                print('koniec')
                 break
+            if int(elem_data[1]) in elements_inside_domain:
+                actual_line = inFile.beamparameters['elemstart']+lines
+                new_beam_number = int(elem_data[-1]) + inFile.beamparameters['beamnumber']
+                x = "  "+"\t"+ "\t".join(elem_data[:-1]) + "\t"+str(new_beam_number) + "\n"
+                inFile.file_lines[actual_line] = x
             lines+=1
 
-        for line in inFile.file_lines[inFile.beamparameters['elemstart']:]:
-            #print(line)
-            if 'ELEM' not in line:
-                print('koniec')
-                break
+        # for line in inFile.file_lines[350:370]:
+        #     print(line)
         
         # zmień rodzaj przekroju dla elementów znajdujących się w domenie transferowej w infile.file_lines z x na x+len(beamtypes)/2:
         #                tag    node1   node2    node3   node4  rodzaj_przekroju
@@ -282,9 +278,13 @@ def operate_on_cfd(inFile, transfer_dir=transfer, working_dir = working_dir):
         # =========================================================
 
         # zapisz zmodyfikowany plik wejściowy analizy odpowiedzi mechanicznej jako 'dummy.in'
-
+        with open(working_dir+"dummy.in", "a") as f:
+            for line in inFile.file_lines:
+                f.write(line)
+      
         # uruchom obliczenia dla każdego pliku 'cfd_*.in':
         #   safir_tools.run_safir('cfd_profile.in')
+
 
     # sprawdź czy liczba plików b_XXXXX_Y.tem jest równa liczbie len(infile.beams) * 2:
     #   jeśli nie - zwróć błąd
@@ -318,4 +318,3 @@ def find_transfer_domain(transfer_file):
 if __name__ == '__main__':
     arguments = sys.argv[1:]
     main(*arguments)
-    #operate_on_cfd(*arguments)
