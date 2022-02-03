@@ -6,7 +6,7 @@ import sys
 import os
 
  
-def main(transfer_dir, config_dir, mechanical_input_file):
+def main(transfer_dir, config_dir, mechanical_input_file, safir_exe_path):
     working_dir = os.path.dirname(mechanical_input_file)+'//' 
     #os.chdir(pwd+mechanical_input_file) # folder z mechanical input file
     # 0. chdir(mechanical_input_file) -> DONE
@@ -33,7 +33,7 @@ def main(transfer_dir, config_dir, mechanical_input_file):
 
         for file_in in all_thermal_infiles:
             file =working_dir+file_in
-            safir_tools.run_safir(file)
+            safir_tools.run_safir(file, safir_exe_path)
         
        
         
