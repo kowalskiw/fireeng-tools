@@ -7,28 +7,6 @@ from sys import argv
 import argparse as ar
 from safir_tools import run_safir
 
-# # print progress of process
-# def progress_bar(title, current, total, bar_length=20):
-#     percent = float(current) * 100 / total
-#     arrow = '-' * int(percent / 100 * bar_length - 1) + '>'
-#     spaces = ' ' * (bar_length - len(arrow))
-#
-#     print('%s: [%s%s] %d %%' % (title, arrow, spaces, percent), end='\r')
-#
-#
-# # return user configuration directory
-# def user_config(user_file):
-#     user = {}
-#     with open(user_file) as file:
-#         for line in file.readlines():
-#             splited = line.split()
-#             try:
-#                 value = float(splited[-1])
-#             except ValueError:
-#                 value = splited[-1]
-#             user[splited[0]] = value
-#     return user
-
 '''New, simpler and more object-oriented code'''
 
 
@@ -88,9 +66,9 @@ def read_mech_input(path_to_frame):
 # return the input file path regarding to GiD catalogues or files with no further directory tree
 # (make this comment better, please)
 def find_paths(config_path, chid, shell=False):
-    gid_paths = ['{0}\{1}.gid\{1}{2}'.format(config_path, chid, i) for i in ['.in', '-1.T0R']]
-    other_in_path = '{0}\{1}.in'.format(config_path, chid)
-    other_tor_paths = ['{0}\{1}{2}'.format(config_path, chid, i) for i in ['-1.T0R', 'T0R', 't0r', 'tor', 'TOR']]
+    gid_paths = ['{0}/{1}.gid/{1}{2}'.format(config_path, chid, i) for i in ['.in', '-1.T0R']]
+    other_in_path = '{0}/{1}.in'.format(config_path, chid)
+    other_tor_paths = ['{0}/{1}{2}'.format(config_path, chid, i) for i in ['-1.T0R', 'T0R', 't0r', 'tor', 'TOR']]
     expected_paths_no = 2
 
     if shell:
@@ -139,11 +117,11 @@ class ThermalTEM:
     # changing input file form iso curve to natural fire mode
     def change_in(self, mech_chid):
         # open thermal analysis input file
-        with open('{}\{}.in'.format(self.sim_dir, self.chid)) as file:
+        with open('{}/{}.in'.format(self.sim_dir, self.chid)) as file:
             init = file.readlines()
 
         # save backup of input file
-        with open('{}\{}.bak'.format(self.sim_dir, self.chid), 'w') as file:
+        with open('{}/{}.bak'.format(self.sim_dir, self.chid), 'w') as file:
             file.writelines(init)
 
         # make changes
@@ -199,7 +177,7 @@ class ThermalTEM:
                     pass
 
         # write changed file
-        with open('{}\{}.in'.format(self.sim_dir, self.chid), 'w') as file:
+        with open('{}/{}.in'.format(self.sim_dir, self.chid), 'w') as file:
             file.writelines(init)
 
     # insert torsion results to the first TEM file
@@ -208,7 +186,7 @@ class ThermalTEM:
 
         # check if torsion results already are in TEM file
         try:
-            tem_file_path = '{}\{}'.format(self.sim_dir, self.first)
+            tem_file_path = '{}/{}'.format(self.sim_dir, self.first)
             with open(tem_file_path) as file:
                 tem = file.read()
 
@@ -230,17 +208,6 @@ class ThermalTEM:
                 tor_indexes = [tor.index(i) for i in ['w\n', 'COLD']]
             else:
                 raise ValueError('[ERROR] Torsion results not found in the {} file'.format(self.config_paths[1]))
-
-            # find TEM line where torsion results should be passed
-            # annotation = ''
-            # if self.model in {'cold', 'f20', 'iso', 'standard', 'fiso'}:
-            #     annotation = '       HOT\n'
-            # elif self.model == 'cfd':
-            #     annotation = '       CFD\n'
-            # elif self.model in {'lcf', 'locafi'}:
-            #     annotation = '    LOCAFI\n'
-            # elif self.model in {'hsm', 'hasemi'}:
-            #     annotation = '    HASEMI\n'
 
             # insert torsion results to thermal results file
             tem_parts = []
@@ -264,9 +231,6 @@ class ThermalTEM:
         print('[OK] Torsion results copied to the TEM')
         return 0
 
-        # except UnboundLocalError:
-        #     print('[WARNING] The {} profile is not found in the Structural 3D .IN file'.format(self.chid))
-        #     return -1
 
     def in2sim_dir(self):
         copy2(self.config_paths[0], self.sim_dir)
@@ -402,7 +366,7 @@ class ThermalTSH:
 
     # default calculations (preparations should have already been done)
     def run(self, safir_exe):
-        run_safir('{}\{}.in'.format(self.sim_dir, self.chid), safir_exe_path=safir_exe)
+        run_safir('{}/{}.in'.format(self.sim_dir, self.chid), safir_exe_path=safir_exe)
 
 
 class Mechanical:
@@ -434,7 +398,7 @@ class Mechanical:
             init = file.readlines()
 
         # save backup of input file
-        with open('{}\{}.bak'.format(self.sim_dir, self.chid), 'w') as file:
+        with open('{}/{}.bak'.format(self.sim_dir, self.chid), 'w') as file:
             file.writelines(init)
 
         # change to STATIC COLD mode
