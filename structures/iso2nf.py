@@ -237,7 +237,7 @@ class ThermalTEM:
 
     # default calculations (preparations should have already been done)
     def run(self, safir_exe):
-        run_safir('{}\{}.in'.format(self.sim_dir, self.chid), safir_exe_path=safir_exe)
+        run_safir('{}/{}.in'.format(self.sim_dir, self.chid), safir_exe_path=safir_exe)
         self.insert_tor()
 
 
@@ -257,7 +257,7 @@ class ThermalTSH:
 
     # change input file to natural fire calculations
     def change_in(self, mech_chid):
-        in_file_path = '{}\{}.in'.format(self.sim_dir, self.chid)
+        in_file_path = '{}/{}.in'.format(self.sim_dir, self.chid)
 
         # open thermal analysis input file
         with open(in_file_path) as file:
@@ -591,7 +591,7 @@ def get_arguments(from_argv):
 
     # change paths to absolute
     for k in argums.__dict__:
-        if k == 'model':
+        if k in ['model', 'check']:
             continue
         try:
             argums.__dict__[k] = ap(argums.__dict__[k])

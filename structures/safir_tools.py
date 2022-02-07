@@ -39,7 +39,7 @@ def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True
     chid = basename(in_file_path)[:-3]
 
     print(f'Reading {chid}.in file...')
-    process = subprocess.Popen(' '.join([safir_exe_path, chid]), shell=False, stdout=subprocess.PIPE)
+    process = subprocess.Popen([safir_exe_path, chid], shell=False, stdout=subprocess.PIPE)
     print_all = False
     success = True
     count = 0
