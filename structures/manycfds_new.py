@@ -60,10 +60,22 @@ class ManyCfds:
 
 
     def copy_files(self):
-        self.copied_mechanical =[]
 
-        for beam in self.inFile.beamparameters['beamtypes']:
-            file =beam+'.in'
+        self.copied_mechanical =[]
+        """ CHECK WHETHER FILE ENDS WITH .IN OR .in """
+        suffix =""          #is suffix can be transfer to lower() - CAN linux run .in file (not .IN) 
+        for file in os.listdir(self.config_dir):  #in this case all the files has to be only lowercase or only uppercase -is here a chance to have some lower some uppercase suffixes in files?
+                if file.endswith("in"):
+                    suffix = ".in"
+                    pass
+                elif file.endswith("IN"):
+                    suffix = ".IN"
+                else: 
+                    pass
+
+        """ NAME CHANGE AND COPYING FILES""" 
+        for beam in self.inFile.beamparameters['beamtypes']:           
+            file =beam+suffix
             modified = 'cfd_'+file
             self.copied_mechanical.append(modified)
             try:
