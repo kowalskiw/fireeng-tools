@@ -137,7 +137,7 @@ class ThermalTEM:
                     init[no] = 'MAKE.TEMHA\n'
 
                 # insert beam type
-                [init.insert(no + 1, i) for i in ['BEAM_TYPE {}\n'.format(self.beam_type), '{}.in\n'.format(mech_chid)]]
+                [init.insert(no + 1, i) for i in ['BEAM_TYPE {}\n'.format(self.beam_type), '{}.IN\n'.format(mech_chid)]]
 
             # change thermal attack functions
             elif line.startswith('   F  ') and 'FISO' in line:  # choose heating boundaries with FISO or FISO0 frontier
@@ -177,7 +177,7 @@ class ThermalTEM:
                     pass
 
         # write changed file
-        with open('{}/{}.in'.format(self.sim_dir, self.chid), 'w') as file:
+        with open('{}/{}.IN'.format(self.sim_dir, self.chid), 'w') as file:
             file.writelines(init)
 
     # insert torsion results to the first TEM file
@@ -282,7 +282,7 @@ class ThermalTSH:
 
                 # insert shell type and mechanical file reference
                 [init.insert(no + 1, i) for i in
-                 ['{}.in\n'.format(mech_chid), 'SHELL_TYPE {}\n'.format(self.shell_type)]]
+                 ['{}.IN\n'.format(mech_chid), 'SHELL_TYPE {}\n'.format(self.shell_type)]]
 
             # change thermal attack functions
             elif line.startswith('   F  ') and 'FISO' in line:  # choose heating boundaries with FISO or FISO0 frontier
@@ -578,6 +578,7 @@ def run_user_mode(sim_no, arguments):
 
 
 def get_arguments(from_argv):
+    print(from_argv)
     parser = ar.ArgumentParser(description='Run SAFIR localised fire analysis automatically')
 
     parser.add_argument('-c', '--config', help='Path to configuration directory', required=True)
