@@ -237,7 +237,7 @@ class InFile:
         beamparameters = {}
         lines = 0
         
-        beamparameters['index'] = [x for x in range(len(self.file_lines)) if 'NODOFBEAM' in self.file_lines[x]][0] #where NODOFBEAM appears
+        beamparameters['index'] = [x for x in range(len(self.file_lines)) if 'NODOFBEAM' in self.file_lines[x]][0] #where NODOFBEAM appears - beamparameters in inFile.file_lines starts
         beamparameters['beamtypes']= []
         
 
