@@ -1,2 +1,0 @@
-python D:\ConsultRisk\fireeng-tools\structures\manycfds_new.py  config transfer my_sim\beam.in D:\Safir\2019\safir.exe
-	plik pythona - folder transferowy - folder config - plik .in - ściażka do safira
