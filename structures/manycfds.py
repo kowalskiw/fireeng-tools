@@ -1,145 +1,33 @@
-# napiszę tu jak bym widział strukturę tego skryptu
 import copy
 import safir_tools
 import shutil
 import sys
 import os
 
- 
-def main(transfer_dir, config_dir, mechanical_input_file, safir_exe_path):
-    working_dir = os.path.dirname(mechanical_input_file)+'//' 
-    #os.chdir(pwd+mechanical_input_file) # folder z mechanical input file
-    # 0. chdir(mechanical_input_file) -> DONE
-    # 1. załaduj plik mechanical_input_file (.IN) -frame.in ->DONE
-    with open(mechanical_input_file, 'r+') as file:
+"""Reviewed version of manycfds.py script by zarooba01"""
 
-        inFile_backup =  get_info_from_infile(mechanical_input_file)
-        inFile = get_info_from_infile(mechanical_input_file)
-        
-        end = add_rows(inFile.file_lines, inFile.beamparameters['beamnumber'], inFile.beamparameters['index'])
-        double_beam_num(inFile.file_lines, inFile)
-      
-        try:
-            copied = copy_files(config_dir, inFile.beamparameters['beamtypes'], working_dir)  
-            print('File copied')
-        except:
-            print("Something went wrong during copying")
-        
-        all_thermal_infiles = ['cfd_'+beam+'.in' for beam in inFile.beamparameters['beamtypes']]  
-        for thermal_infile in all_thermal_infiles:
-            change_in(inFile, working_dir+thermal_infile, inFile.beamparameters['beamtypes'])
-       
-        operate_on_cfd(inFile=inFile, transfer_dir = transfer_dir, working_dir = working_dir)
-
-        for file_in in all_thermal_infiles:
-            file =working_dir+file_in
-            safir_tools.run_safir(file, safir_exe_path)
-        
-       
-        
-
-def get_info_from_infile(mechanical_input_file): 
-    """
-    InFile object is created based on *.in file 
-    """
-    with open(mechanical_input_file, 'r+') as file:
-        primary = safir_tools.InFile('dummy', file.readlines())    
-        return primary
-
-def add_rows(file_lines, num_of_beams, index): # zmienić na operowanie na inFile object
-    """ 
-    get data from beams - start and end describes amount of lines that goes to data_add
-    in data_add .tem is being found, then prefix is being added 
-    amoung of \n has to be checked in new file based on file_lines
-    """
-    start = index+1
-    end = start + num_of_beams*3
-    data_add = file_lines[start:end] 
-    for num in range(len(data_add)):
-        if data_add[num].endswith(".tem\n"):
-            data_add[num] = 'cfd_'+data_add[num]
-    file_lines.insert(end, "".join(data_add)) 
-    return end
-
-def double_beam_num(file_lines, inFile):
-    beamline = file_lines[inFile.beamparameters['beamline']] #line where BEAM appears
+"""To be implemented:
+    1) GiD directory tree;
+    2) check for integrity of thermal results: if all BEAM elements were calculated NG times (2 as a default)
+    3) another object named BeamType or Section - use it to operate on thermal input files and to store its attributes
+    (paths, original and newbeamtype etc.) and methods (like change_in() or run())
+    4) assign elements that are located in two domains to one of them
+    4a) finding elements within domain with their exact (according to the integration point) locations
+    5) taking arguments with flags in console mode (-c/---config, -t/--transfer etc.)
     
-    line_params = beamline.split()   
-    line_param_num = line_params[2]
-    doubled_param = str(int(line_param_num)*2)
-    newbemline = " ".join((line_params[0], line_params[1], doubled_param, "\n")) #1.czy trzeba dodać tab na początku 2. nie mozna dać str.replace.
-    inFile.file_lines[inFile.beamparameters['beamline']] = newbemline
-    return file_lines       
+    ~kowalskiw~"""
 
 
-def copy_files(config_dir, mechanical_input_files, dst_dir):
-    copied_mechanical =[]
-    for file in mechanical_input_files:
-        file =file+'.in'
-        modified = 'cfd_'+file
-        copied_mechanical.append(modified)
-        shutil.copyfile(config_dir+file, dst_dir+ modified)   #w folderze config dir znajdują sie pliki .tem
-    return copied_mechanical 
-
-
-
-    # 2. zdubluj wszystkie wpisy definiujące rodzaje przekroi w primary.file_lines, dopisując przedrostek 'cfd_' -> DONE
-    # z czegoś takiego:
-    #====================
-    #     NODOFBEAM
-    #    ipe600.tem
-    #     TRANSLATE    1    1
-    #     END_TRANS
-    #    profil.tem
-    #     TRANSLATE    2    1   2
-    #     END_TRANS
-    #====================
-    # na coś takiego:
-    #====================
-    #     NODOFBEAM
-    #    ipe600.tem
-    #     TRANSLATE    1    1
-    #     END_TRANS
-    #    profil.tem
-    #     TRANSLATE    2    1   2
-    #     END_TRANS
-    #    cfd_ipe600.tem
-    #     TRANSLATE    1    1
-    #     END_TRANS
-    #    cfd_profil.tem
-    #     TRANSLATE    2    1   2
-    #     END_TRANS
-    #====================
-
-    # 3. zapisz wszystkie rodzaje przekrojów ('*.tem') do listy beamtypes = ['profil1.tem', 'profil2.tem'...] -> DONE
-
-
-    # 4. następnie podwój tę liczbę i nadpisz w primary.file_lines -> DONE
-    # z czegoś takiego:
-    #====================
-    #   BEAM  18672    17
-    #====================
-    # na coś takiego:
-    #====================
-    #   BEAM  18672    34
-    #====================
-
-
-    # 5. skopiuj z lokalizacji config_dir pliki wejściowe analizy odpowiedzi termicznej '*.in'
-        # (oddziaływanie termiczne tylko FISO)
-
-    # 6. dodaj przedrostek 'cfd_' do nazw tych plików (modyfikacja nazw)
-
-    # 7. zmodyfikuj pliki 'cfd_*.in' za pomocą funkcji change_in (FISO -> CFD)
-    
-def change_in(inFile, thermal_in_file, beamtypes, t_end=1200):
-    beamtype = inFile.beamparameters['beamtypes'].index(os.path.basename(thermal_in_file)[4:-3])
+def change_in(inFile, thermal_in_file):
+    # new beam type is old + original beam types number + 1 (starts with 1 not 0)
+    newbeamtype = 1 + inFile.beamparameters['beamtypes'].index(os.path.basename(thermal_in_file)[4:-3]) + \
+                  len(inFile.beamparameters['beamtypes'])
     # open thermal analysis input file
     with open(thermal_in_file) as file:
         init = file.readlines()
 
     # save backup of input file
-    with open('{}.bak'.format(thermal_in_file), 'w') as file:
+    with open(f'{thermal_in_file}.bak', 'w') as file:
         file.writelines(init)
 
     # make changes
@@ -150,7 +38,7 @@ def change_in(inFile, thermal_in_file, beamtypes, t_end=1200):
             init[no] = 'MAKE.TEMCD\n'
 
             # insert beam type
-            [init.insert(no + 1, i) for i in ['BEAM_TYPE {}\n'.format(beamtype), '{}.in\n'.format('dummy')]]
+            [init.insert(no + 1, i) for i in ['BEAM_TYPE {}\n'.format(newbeamtype), '{}.in\n'.format('dummy')]]
 
         # change thermal attack functions
         elif line.startswith('   F  ') and 'FISO' in line:  # choose heating boundaries with FISO or FISO0 frontier
@@ -171,150 +59,188 @@ def change_in(inFile, thermal_in_file, beamtypes, t_end=1200):
         elif 'STEEL' in line:
             init[no + 1] = '{}'.format('35'.join(init[no + 1].split('25')))
 
-        # change T_END
-        elif ('TIME' in line) and ('END' not in line):
-            try:
-                init[no + 1] = '    '.join([init[no + 1].split()[0], str(t_end), '\n'])
-            except IndexError:
-                pass
-
     # write changed file
     with open(thermal_in_file, 'w') as file:
         file.writelines(init)
 
 
-def operate_on_cfd(inFile, transfer_dir, working_dir):
-    for transfer_file in enumerate(os.listdir(transfer_dir)):
-        
-        actual_file = transfer_dir+transfer_file[1]
-        domain =find_transfer_domain(actual_file) # znajdź granice domeny obliczeniowej   # domain = find_transfer_domain(transfer_file)
-        shutil.copyfile(actual_file, working_dir+'cfd.txt')   # zapisz plik transfer_file do folderu, w którym jest mechanical_input_file jako 'cfd.txt'
-        inFileCopy = copy.deepcopy(inFile)
+class ManyCfds:
+    def __init__(self, config_dir, transfer_dir, mechanical_input_file, safir_exe_path):
+        self.config_dir = config_dir
+        self.transfer_dir = transfer_dir
+        self.mechanical_input_file = mechanical_input_file
+        self.safir_exe_path = safir_exe_path
+        self.working_dir = os.path.dirname(mechanical_input_file)
 
+        self.inFile_backup = self.get_info_from_infile()
+        self.inFile = self.get_info_from_infile()
+
+        self.cfd_thermal_infiles = self.get_all_thermal_infiles()
+
+    def main(self):
+        self.add_rows()     # doubling beam types with cfd version of each section
+        self.double_beam_num()  # doubling beam types number
+        self.copy_files()   # copying sections with adding 'cfd_' prefix
+        self.change_in_for_infiles()    # modify thermal attack in all 'cfd_*.IN' from FISO to CFD
+        # iterate over transfer files and calculate elements within each domain
+        for transfer_file in os.listdir(self.transfer_dir):
+            self.operate_on_cfd(transfer_file)
+            self.run_safir_for_all_thermal()
+
+    def get_info_from_infile(self):
+        """
+        InFile object is created based on *.in file
+        """
+        with open(self.mechanical_input_file, 'r+') as file:
+            self.inFile = safir_tools.InFile('dummy', file.readlines())
+
+        return self.inFile
+
+    def add_rows(self):
+        """
+            Doubling rows in beamparameters in inFile.file_lines and adding 'cfd_' before beam name
+        """
+        start = self.inFile.beamparameters['index'] + 1  # the line where beamparameters starts in inFile.file_lines
+        end = self.inFile.file_lines.index('END_TRANS\n')  # start + self.inFile.beamparameters['beamnumber'] * 3
+        data_add = self.inFile.file_lines[start:end]
+        for num in range(len(data_add)):
+            if data_add[num].endswith('.tem\n'):
+                data_add[num] = 'cfd_' + data_add[num]
+        self.inFile.file_lines.insert(end, ''.join(data_add))
+
+    def double_beam_num(self):
+        line_params = self.inFile.file_lines[self.inFile.beamparameters['beamline']].split()
+        line_param_num = line_params[2]
+        doubled_param = str(int(line_param_num) * 2)
+        newbemline = ' '.join((line_params[0], line_params[1], doubled_param, '\n'))
+        self.inFile.file_lines[self.inFile.beamparameters['beamline']] = newbemline
+
+    def copy_files(self):
+        """ NAME CHANGE AND COPYING FILES"""
+        for beam in self.inFile.beamparameters['beamtypes']:
+            try:
+                shutil.copyfile(os.path.join(self.config_dir, f'{beam}.IN'),
+                                os.path.join(self.working_dir, f'cfd_{beam}.IN'))
+            except FileNotFoundError as e:
+                print(e)
+                sys.exit(1)
+
+    def get_all_thermal_infiles(self):
+        return ['cfd_' + beam + '.in' for beam in self.inFile.beamparameters['beamtypes']]
+
+    def change_in_for_infiles(self):
+        for thermal_infile in self.cfd_thermal_infiles:
+            change_in(self.inFile, os.path.join(self.working_dir, thermal_infile))
+
+    def operate_on_cfd(self, transfer_file):
+        actual_file = os.path.join(self.transfer_dir, transfer_file)
+        domain = find_transfer_domain(actual_file)
+        shutil.copyfile(actual_file, os.path.join(self.working_dir, 'cfd.txt'))  # zapisz plik transfer_file do folderu, w którym jest mechanical_input_file jako 'cfd.txt'
+
+        inFileCopy = copy.deepcopy(self.inFile)
+        beamparams = inFileCopy.beamparameters
+        file_lines = inFileCopy.file_lines
+        """
+        ADDING ELEMENTS INSIDE DOMAIN
+        """
         elements_inside_domain = []
-        with open(actual_file) as file:# otwórz plik transfer_file (plik transferowy o nazwie 'cokolwiek_radf_X_Y.txt')
-            file_lines = file.readlines() 
-            
-        # zapisz plik transfer_file do folderu, w którym jest mechanical_input_file jako 'cfd.txt'
+        for element in inFileCopy.beams:
 
-        # skopiuj primary na potrzeby tego powtórzenia:
-        #   infile = copy.deepcopy(primary)
-        #[min_x, max_x, min_y, max_y,  min_z, max_z]
-        domain = [float(x) for x in domain]
-
-        # znajdź elementy, które znajdują się w obrębie domeny transferowej (wszystkie element są w infile.beams)
-        # for element in infile.beams:
-        element = inFile.beams[0]
-        first_node_id = element[1]
-        last_node_id = element[3]
-        coordinate_node_first = (first_node_id, inFile.nodes[first_node_id]) #id 52 i 53, czy node 0 to środek czy coś takiego?
-        coordinate_node_last = (last_node_id, inFile.nodes[last_node_id]) 
-
-                #          [1,          __52__,                     164,                __53__,                    326,         1]
-        #       element = [tag_elementu, tag_pierwszego_węzła, tag_środkowego_węzła, tag_końcowego węzła, tag_dodatkowego węzła]
-        #   znajdź współrzędne pierwszego i końcowego węzła z infile.nodes:
-        #domain_names = ['min_x', 'max_x', 'min_y', 'max_y',  'min_z', 'max_z']
-        #coordinate_names = ['x','y','z']
-
-
-        """
-        FUNKCJA DODAJĄCA ELEMENTY ZNAJDUJĄCE SIĘ W DOMENIE
-        """
-        for element in inFile.beams[:10]:
             first_node_id = element[1]
             last_node_id = element[3]
-            coordinate_node_first = inFile.nodes[first_node_id][1:] #id 52 i 53, czy node 0 to środek czy coś takiego?
-            coordinate_node_last = inFile.nodes[last_node_id][1:]
-            #print(coordinate_node_first, coordinate_node_last)
-            #print(domain)
-            if ( coordinate_node_first[0]>domain[0] and coordinate_node_last[0] < domain[1] 
-                and coordinate_node_first[1]>domain[2] and coordinate_node_last[1] < domain[3]
-                and coordinate_node_first[2]>domain[4] and coordinate_node_last[2] < domain[5]
-            ): elements_inside_domain.append(element[0])
-        
-        #print(elements_inside_domain)
-        # przykładowa lista, poprzednia pusta
-        
-        #   for node in infile.nodes:
-        #       node = [tag_węzła, [x, y, z]]
-        #   jeśli element znajduje się w domenie:
-        #       elements_inside_domain.append(tag_elementu)
-        
-       
+            coordinate_node_first = inFileCopy.nodes[first_node_id - 1][
+                                    1:]  # id 52 i 53, czy node 0 to środek czy coś takiego?
+            coordinate_node_last = inFileCopy.nodes[last_node_id - 1][
+                                   1:]  # node id musi byc zmniejszony aby byl spojny z informacjami w beam id
+
+            # enable elements to be partially within domain
+            if ((coordinate_node_first[0] > domain[0] and coordinate_node_last[0] < domain[1])
+                    and (coordinate_node_first[1] > domain[2] and coordinate_node_last[1] < domain[3])
+                    and (coordinate_node_first[2] > domain[4] and coordinate_node_last[2] < domain[5])):
+
+                elements_inside_domain.append(element[0])
+        print(f'[INFO] There are {len(elements_inside_domain)} BEAM elements located in the {domain} domain')
+
+        """
+        CHANGING BEAM ID AT END OF THE LINE
+        """
         lines = 0
-        """
-        FUNKCJA ZMIENIAJĄCA id przekroju na koncu wiersza
-        """
-        for line in inFile.file_lines[inFile.beamparameters['elemstart']:]:
-            elem_data= line.split()
-            #print(elem_data)
-            
-                #inFile.file_lines[actual_line] = " ".join([str(x) for x in elem_data[:-1]], str(elem_data[-1]+len(inFile.beamparameters['beamtypes'])/2))
+        for line in file_lines[beamparams['elemstart']:]:
+            elem_data = line.split()
             if 'ELEM' not in line:
                 break
             if int(elem_data[1]) in elements_inside_domain:
-                actual_line = inFile.beamparameters['elemstart']+lines
-                new_beam_number = int(elem_data[-1]) + inFile.beamparameters['beamnumber']
-                x = "  "+"\t"+ "\t".join(elem_data[:-1]) + "\t"+str(new_beam_number) + "\n"
-                inFile.file_lines[actual_line] = x
-            lines+=1
-
-        # for line in inFile.file_lines[350:370]:
-        #     print(line)
-        
-        # zmień rodzaj przekroju dla elementów znajdujących się w domenie transferowej w infile.file_lines z x na x+len(beamtypes)/2:
-        #                tag    node1   node2    node3   node4  rodzaj_przekroju
-        #         ELEM   149    8654    17876    8561    36548    1
-        #
-        # z czegoś takiego:
-        #=========================================================
-        #         ELEM   1    8654    17876    8561    36548    1
-        #         ELEM   2    8561    17877    8489    36549    2
-        #=========================================================
-        # na coś takiego (przy nbeamtype==6):
-        # =========================================================
-        #         ELEM   1    8654    17876    8561    36548    7
-        #         ELEM   2    8561    17877    8489    36549    8
-        # =========================================================
+                actual_line = beamparams['elemstart'] + lines
+                new_beam_number = int(elem_data[-1]) + beamparams['beamnumber']
+                file_lines[actual_line] = f'  \t{"    ".join(elem_data[:-1])}\t{new_beam_number}\n'
+            lines += 1
 
         # zapisz zmodyfikowany plik wejściowy analizy odpowiedzi mechanicznej jako 'dummy.in'
-        with open(working_dir+"dummy.in", "a") as f:
-            for line in inFile.file_lines:
+        with open(os.path.join(self.working_dir, 'dummy.in'), 'w') as f:
+            for line in file_lines:
                 f.write(line)
-      
-        # uruchom obliczenia dla każdego pliku 'cfd_*.in':
-        #   safir_tools.run_safir('cfd_profile.in')
+
+    def run_safir_for_all_thermal(self):
+        for file_in in self.cfd_thermal_infiles:
+            file = os.path.join(self.working_dir, file_in)
+            safir_tools.run_safir(file, self.safir_exe_path, fix_rlx=False)
 
 
-    # sprawdź czy liczba plików b_XXXXX_Y.tem jest równa liczbie len(infile.beams) * 2:
-    #   jeśli nie - zwróć błąd
-    #   jeśli tak - pogratuluj sukcesu, zwróć 0
+# def find_transfer_domain_hz(transfer_file):
+#     # domain = []     # [XA, XB, YA, YB, ZA, ZB]
+#     with open(transfer_file, 'r+') as file:
+#         transfer_data_file = file.readlines()
+#         for num in range(len(transfer_data_file)):
+#             if 'XYZ_INTENSITIES' in transfer_data_file[num]:
+#                 start = num + 1
+#                 break
+#         for num in range(len(transfer_data_file))[start:]:
+#             if 'NI' in transfer_data_file[num]:
+#                 end = num - 1
+#                 break
+#
+#     all_x, all_y, all_z = [], [], []
+#
+#     for xyzline in transfer_data_file[start:end]:
+#         x, y, z = xyzline.split()
+#         all_x.append(x)
+#         all_y.append(y)
+#         all_z.append(z)
+#     domain = [min(all_x), max(all_x), min(all_y), max(all_y), min(all_z), max(all_z)]
+#     domain = [float(x) for x in domain]
+#
+#     # tutaj znajduje granice domeny (box) pliku transferowego
+#     return domain
+
 
 def find_transfer_domain(transfer_file):
-    #domain = []     # [XA, XB, YA, YB, ZA, ZB]
-    with open(transfer_file, 'r+') as file:
-        transfer_data_file = file.readlines()
-        for num in range(len(transfer_data_file)):
-            if 'XYZ_INTENSITIES' in transfer_data_file[num]:
-                start = num +1
-                break
-        for num in range(len(transfer_data_file))[start:]:
-            if 'NI' in transfer_data_file[num]:
-                end = num -1
-                break
-        #print(start, end) # czy bedziemy operować potem na liniach XYZ INTENSITIES
+    r = False
+    all_x, all_y, all_z = [], [], []
+    with open(transfer_file) as file:
+        for line in file:
+            if r:
+                try:
+                    x, y, z = line.split()
+                except ValueError:
+                    break
+                all_x.append(x)
+                all_y.append(y)
+                all_z.append(z)
+            if 'XYZ_INTENSITIES' in line:
+                r = True
+    all_x = [float(x) for x in all_x]
+    all_y = [float(x) for x in all_y]
+    all_z = [float(x) for x in all_z]
+    domain = [min(all_x), max(all_x), min(all_y), max(all_y), min(all_z), max(all_z)]
 
-    all_x, all_y, all_z = [] ,[], []
-
-    for xyzline in transfer_data_file[start:end]:
-        x,y,z = xyzline.split()
-        all_x.append(x)
-        all_y.append(y)
-        all_z.append(z)
-    domain = [min(all_x), max(all_x),min(all_y),max(all_y),  min(all_z), max(all_z)]
     # tutaj znajduje granice domeny (box) pliku transferowego
-    return domain
+    return domain  # [XA, XB, YA, YB, ZA, ZB]
+
 
 if __name__ == '__main__':
+
     arguments = sys.argv[1:]
-    main(*arguments)
+    for i, a in enumerate(arguments):
+        arguments[i] = os.path.abspath(a)
+    manycfds = ManyCfds(*arguments)
+    manycfds.main()
