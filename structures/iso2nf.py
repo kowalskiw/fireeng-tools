@@ -627,7 +627,7 @@ def get_arguments(from_argv):
 
     # change paths to absolute
     for k in argums.__dict__:
-        if k == 'model':
+        if k in ['model', 'check']:
             continue
         try:
             argums.__dict__[k] = ap(argums.__dict__[k])
