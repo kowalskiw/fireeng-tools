@@ -591,7 +591,7 @@ def run_user_mode(sim_no, arguments):
 
 
 def get_arguments(from_argv):
-    print(from_argv)
+    # print(from_argv)
     parser = ar.ArgumentParser(description='Run SAFIR localised fire analysis automatically')
 
     parser.add_argument('-c', '--config', help='Path to configuration directory', required=True)
@@ -601,9 +601,10 @@ def get_arguments(from_argv):
     parser.add_argument('-r', '--results', nargs='+', help='Paths to mechanical analysis IN files (one scenario ->'
                                                            'one IN file)', required=True)
     parser.add_argument('-ch', '--check', help='Running checking functions before analyzing (boolean)', default=True)
-    parser.add_argument('-v', '--verbose', default='trace', const='verbose',
+    parser.add_argument('-v', '--verbose', default='trace', const='verbose', nargs='?',
                         help='Logging level ("trace" - reduced output [default], no argument or "verbose" - verbose'
                              'output, "warning" - warning level of logging)')
+    parser.parse_args(['-h'])
     argums = parser.parse_args(args=from_argv)
 
     # change paths to absolute
@@ -622,7 +623,7 @@ def get_arguments(from_argv):
 
 
 if __name__ == '__main__':
-    first = argv[1]
+    # first = argv[1]
 
     print('\n====== Welcome to iso2nf ======\n iso2nf.py is one of the components of fireeng-tools structural package.'
           '\n\nI am trying to run your case now. I will keep you updated on the progress. \n==================\n')
