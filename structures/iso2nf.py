@@ -604,7 +604,7 @@ def run_user_mode(sim_no, arguments):
         st = sec()
         t.change_in(m.chid)
         t.run(arguments.safir, arguments.verbose)
-        if arguments.verbos != 'warning':
+        if arguments.verbose != 'warning':
             print('Runtime of "{}" thermal analysis: {}\n'.format(t.chid, dt(seconds=int(sec() - st))))
 
     # run mechanical analysis
