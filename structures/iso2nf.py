@@ -236,8 +236,21 @@ class ThermalTEM:
         copy2(self.config_paths[0], self.sim_dir)
 
     # default calculations (preparations should have already been done)
-    def run(self, safir_exe):
-        run_safir('{}/{}.in'.format(self.sim_dir, self.chid), safir_exe_path=safir_exe)
+    def run(self, safir_exe, verb):
+        # verbose output - all SAFIR logs are passed to the console
+        if verb == 'verbose':
+            v = True
+            pt = False
+        # warnings and higher
+        elif verb == 'warning':
+            v = False
+            pt = False
+        # default reduced output
+        else:
+            v = False
+            pt = True
+
+        run_safir('{}/{}.in'.format(self.sim_dir, self.chid), safir_exe_path=safir_exe, print_time=pt, verbose=v)
         self.insert_tor()
 
 
@@ -565,7 +578,7 @@ def run_user_mode(sim_no, arguments):
     for t in m.thermals:
         st = sec()
         t.change_in(m.chid)
-        t.run(arguments.safir)
+        t.run(arguments.safir, verbose=arguments.verbose)
         print('Runtime of "{}" thermal analysis: {}\n'.format(t.chid, dt(seconds=int(sec() - st))))
 
     # run mechanical analysis
@@ -588,11 +601,14 @@ def get_arguments(from_argv):
     parser.add_argument('-r', '--results', nargs='+', help='Paths to mechanical analysis IN files (one scenario ->'
                                                            'one IN file)', required=True)
     parser.add_argument('-ch', '--check', help='Running checking functions before analyzing (boolean)', default=True)
+    parser.add_argument('-v', '--verbose', default='trace', const='verbose',
+                        help='Logging level ("trace" - reduced output [default], no argument or "verbose" - verbose'
+                             'output, "warning" - warning level of logging)')
     argums = parser.parse_args(args=from_argv)
 
     # change paths to absolute
     for k in argums.__dict__:
-        if k in ['model', 'check']:
+        if k in ['model', 'check', 'verbose']:
             continue
         try:
             argums.__dict__[k] = ap(argums.__dict__[k])
