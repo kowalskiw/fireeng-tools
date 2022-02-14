@@ -524,7 +524,7 @@ class Check:
 
         # write with updated nfiber if necessary
         if nsolid_max > nfiber:
-            print('[WARNING] NFIBER is too low - is {} and should be {}. I will fix it.'.format(nfiber, nsolid_max))
+            print('[WARNING] NFIBER is too low - is {} and should be {}. I\'ll try to fix it.'.format(nfiber, nsolid_max))
 
             for line in in_mech_file:
                 if 'NFIBER' in line:
@@ -604,15 +604,19 @@ def run_user_mode(sim_no, arguments):
         st = sec()
         t.change_in(m.chid)
         t.run(arguments.safir, arguments.verbose)
-        print('Runtime of "{}" thermal analysis: {}\n'.format(t.chid, dt(seconds=int(sec() - st))))
+        if arguments.verbos != 'warning':
+            print('Runtime of "{}" thermal analysis: {}\n'.format(t.chid, dt(seconds=int(sec() - st))))
 
     # run mechanical analysis
     st = sec()
     m.change_in()
     m.run(arguments.safir, arguments.verbose)
-    print('Runtime of "{}" mechanical analysis: {}\n'.format(m.chid, dt(seconds=int(sec() - st))))
 
-    print('Summary "{}" runtime: {}\n'.format(m.chid, dt(seconds=int(sec() - start))))
+    if arguments.verbos != 'warning':
+        print('Runtime of "{}" mechanical analysis: {}\n'.format(m.chid, dt(seconds=int(sec() - st))))
+
+    if arguments.verbos != 'warning':
+        print('Summary "{}" runtime: {}\n'.format(m.chid, dt(seconds=int(sec() - start))))
 
 
 def get_arguments(from_argv):

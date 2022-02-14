@@ -71,8 +71,9 @@ def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True
 
     if not rc:
         if success:
-            print(f'[OK] SAFIR finished {count} "{chid}" calculations at')
-            print(f'[INFO] Computing time: {dt.now() - start}')
+            if print_time:
+                print(f'[OK] SAFIR finished {count} "{chid}" calculations at')
+                print(f'[INFO] Computing time: {dt.now() - start}')
             repair_relax(f'{dirpath}/{chid}.XML') if fix_rlx else None
             return 0
         else:
