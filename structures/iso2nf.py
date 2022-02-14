@@ -377,8 +377,21 @@ class ThermalTSH:
         copy2(self.config_path, self.sim_dir)
 
     # default calculations (preparations should have already been done)
-    def run(self, safir_exe):
-        run_safir('{}/{}.in'.format(self.sim_dir, self.chid), safir_exe_path=safir_exe)
+    def run(self, safir_exe, verb):
+        # verbose output - all SAFIR logs are passed to the console
+        if verb == 'verbose':
+            v = True
+            pt = False
+        # warnings and higher
+        elif verb == 'warning':
+            v = False
+            pt = False
+        # default reduced output
+        else:
+            v = False
+            pt = True
+
+        run_safir('{}/{}.in'.format(self.sim_dir, self.chid), safir_exe_path=safir_exe, print_time=pt, verbose=v)
 
 
 class Mechanical:
@@ -444,7 +457,7 @@ class Mechanical:
             v = False
             pt = True
 
-        run_safir(self.input_file, safir_exe_path=safir_exe)
+        run_safir(self.input_file, safir_exe_path=safir_exe, print_time=pt, verbose=v)
 
 
 # to be rewritten in the future
