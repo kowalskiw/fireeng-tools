@@ -612,10 +612,10 @@ def run_user_mode(sim_no, arguments):
     m.change_in()
     m.run(arguments.safir, arguments.verbose)
 
-    if arguments.verbos != 'warning':
+    if arguments.verbose != 'warning':
         print('Runtime of "{}" mechanical analysis: {}\n'.format(m.chid, dt(seconds=int(sec() - st))))
 
-    if arguments.verbos != 'warning':
+    if arguments.verbose != 'warning':
         print('Summary "{}" runtime: {}\n'.format(m.chid, dt(seconds=int(sec() - start))))
 
 
