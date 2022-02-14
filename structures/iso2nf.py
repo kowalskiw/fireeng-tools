@@ -604,8 +604,9 @@ def get_arguments(from_argv):
     parser.add_argument('-v', '--verbose', default='trace', const='verbose', nargs='?',
                         help='Logging level ("trace" - reduced output [default], no argument or "verbose" - verbose'
                              'output, "warning" - warning level of logging)')
-    parser.parse_args(['-h'])
+
     argums = parser.parse_args(args=from_argv)
+    # parser.parse_args(['-h'])
 
     # change paths to absolute
     for k in argums.__dict__:
