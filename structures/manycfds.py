@@ -11,8 +11,7 @@ import os
     2) check for integrity of thermal results: if all BEAM elements were calculated NG times (2 as a default)
     3) another object named BeamType or Section - use it to operate on thermal input files and to store its attributes
     (paths, original and newbeamtype etc.) and methods (like change_in() or run())
-    4) assign elements that are located in two domains to one of them
-    4a) finding elements within domain with their exact (according to the integration point) locations
+    4) finding elements within domain with their exact (according to the integration point) locations
     5) taking arguments with flags in console mode (-c/---config, -t/--transfer etc.)
     
     ~kowalskiw~"""
@@ -78,14 +77,14 @@ class ManyCfds:
         self.cfd_thermal_infiles = self.get_all_thermal_infiles()
 
     def main(self):
-        self.add_rows()     # doubling beam types with cfd version of each section
+        self.add_rows()  # doubling beam types with cfd version of each section
         self.double_beam_num()  # doubling beam types number
-        self.copy_files()   # copying sections with adding 'cfd_' prefix
-        self.change_in_for_infiles()    # modify thermal attack in all 'cfd_*.IN' from FISO to CFD
+        self.copy_files()  # copying sections with adding 'cfd_' prefix
+        self.change_in_for_infiles()  # modify thermal attack in all 'cfd_*.IN' from FISO to CFD
         # iterate over transfer files and calculate elements within each domain
         for transfer_file in os.listdir(self.transfer_dir):
-            self.operate_on_cfd(transfer_file)
-            self.run_safir_for_all_thermal()
+            if self.operate_on_cfd(transfer_file):
+                self.run_safir_for_all_thermal()
 
     def get_info_from_infile(self):
         """
@@ -135,7 +134,7 @@ class ManyCfds:
     def operate_on_cfd(self, transfer_file):
         actual_file = os.path.join(self.transfer_dir, transfer_file)
         domain = find_transfer_domain(actual_file)
-        shutil.copyfile(actual_file, os.path.join(self.working_dir, 'cfd.txt'))  # zapisz plik transfer_file do folderu, w którym jest mechanical_input_file jako 'cfd.txt'
+        shutil.copyfile(actual_file, os.path.join(self.working_dir, 'cfd.txt'))
 
         inFileCopy = copy.deepcopy(self.inFile)
         beamparams = inFileCopy.beamparameters
@@ -148,18 +147,21 @@ class ManyCfds:
 
             first_node_id = element[1]
             last_node_id = element[3]
-            coordinate_node_first = inFileCopy.nodes[first_node_id - 1][
-                                    1:]  # id 52 i 53, czy node 0 to środek czy coś takiego?
-            coordinate_node_last = inFileCopy.nodes[last_node_id - 1][
-                                   1:]  # node id musi byc zmniejszony aby byl spojny z informacjami w beam id
+            first_node_coor = inFileCopy.nodes[first_node_id - 1][1:]
+            last_node_coor = inFileCopy.nodes[last_node_id - 1][1:]
 
-            # enable elements to be partially within domain
-            if ((coordinate_node_first[0] > domain[0] and coordinate_node_last[0] < domain[1])
-                    and (coordinate_node_first[1] > domain[2] and coordinate_node_last[1] < domain[3])
-                    and (coordinate_node_first[2] > domain[4] and coordinate_node_last[2] < domain[5])):
-
+            # enable elements to be partially within domain (only start or end point is enough)
+            if ((domain[1] > first_node_coor[0] > domain[0] or domain[1] > last_node_coor[0] > domain[0])
+                    and (domain[3] > first_node_coor[1] > domain[2] or domain[3] > last_node_coor[1] > domain[2])
+                    and (domain[5] > first_node_coor[2] > domain[4] or domain[5] > last_node_coor[2] > domain[4])):
                 elements_inside_domain.append(element[0])
-        print(f'[INFO] There are {len(elements_inside_domain)} BEAM elements located in the {domain} domain')
+
+        print(f'[INFO] There are {len(elements_inside_domain)} BEAM elements located in the {domain} domain:')
+
+        if len(elements_inside_domain) == 0:
+            return False
+        else:
+            print(f'{elements_inside_domain}')
 
         """
         CHANGING BEAM ID AT END OF THE LINE
@@ -175,15 +177,18 @@ class ManyCfds:
                 file_lines[actual_line] = f'  \t{"    ".join(elem_data[:-1])}\t{new_beam_number}\n'
             lines += 1
 
-        # zapisz zmodyfikowany plik wejściowy analizy odpowiedzi mechanicznej jako 'dummy.in'
+        # save modified mechanical input file as 'dummy.in'
         with open(os.path.join(self.working_dir, 'dummy.in'), 'w') as f:
             for line in file_lines:
                 f.write(line)
 
+        return True
+
     def run_safir_for_all_thermal(self):
-        for file_in in self.cfd_thermal_infiles:
+        for i, file_in in enumerate(self.cfd_thermal_infiles):
             file = os.path.join(self.working_dir, file_in)
             safir_tools.run_safir(file, self.safir_exe_path, fix_rlx=False)
+            [os.rename(f'{file[:-3]}.{e}', f'{file[:-3]}_{i}.{e}') for e in ['XML', 'OUT']]
 
 
 # def find_transfer_domain_hz(transfer_file):
@@ -233,7 +238,7 @@ def find_transfer_domain(transfer_file):
     all_z = [float(x) for x in all_z]
     domain = [min(all_x), max(all_x), min(all_y), max(all_y), min(all_z), max(all_z)]
 
-    # tutaj znajduje granice domeny (box) pliku transferowego
+    # transfer domain boundaries
     return domain  # [XA, XB, YA, YB, ZA, ZB]
 
 
