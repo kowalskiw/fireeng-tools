@@ -231,7 +231,6 @@ class ThermalTEM:
         print('[OK] Torsion results copied to the TEM')
         return 0
 
-
     def in2sim_dir(self):
         copy2(self.config_paths[0], self.sim_dir)
 
@@ -431,7 +430,20 @@ class Mechanical:
         with open('{}'.format(self.input_file), 'w') as file:
             file.writelines(init)
 
-    def run(self, safir_exe):
+    def run(self, safir_exe, verb):
+        # verbose output - all SAFIR logs are passed to the console
+        if verb == 'verbose':
+            v = True
+            pt = False
+        # warnings and higher
+        elif verb == 'warning':
+            v = False
+            pt = False
+        # default reduced output
+        else:
+            v = False
+            pt = True
+
         run_safir(self.input_file, safir_exe_path=safir_exe)
 
 
@@ -578,13 +590,13 @@ def run_user_mode(sim_no, arguments):
     for t in m.thermals:
         st = sec()
         t.change_in(m.chid)
-        t.run(arguments.safir, verbose=arguments.verbose)
+        t.run(arguments.safir, arguments.verbose)
         print('Runtime of "{}" thermal analysis: {}\n'.format(t.chid, dt(seconds=int(sec() - st))))
 
     # run mechanical analysis
     st = sec()
     m.change_in()
-    m.run(arguments.safir)
+    m.run(arguments.safir, arguments.verbose)
     print('Runtime of "{}" mechanical analysis: {}\n'.format(m.chid, dt(seconds=int(sec() - st))))
 
     print('Summary "{}" runtime: {}\n'.format(m.chid, dt(seconds=int(sec() - start))))
