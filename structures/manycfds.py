@@ -82,9 +82,9 @@ class ManyCfds:
         self.copy_files()  # copying sections with adding 'cfd_' prefix
         self.change_in_for_infiles()  # modify thermal attack in all 'cfd_*.IN' from FISO to CFD
         # iterate over transfer files and calculate elements within each domain
-        for transfer_file in os.listdir(self.transfer_dir):
+        for i, transfer_file in enumerate(os.listdir(self.transfer_dir)):
             if self.operate_on_cfd(transfer_file):
-                self.run_safir_for_all_thermal()
+                self.run_safir_for_all_thermal(i)
 
     def get_info_from_infile(self):
         """
@@ -184,38 +184,11 @@ class ManyCfds:
 
         return True
 
-    def run_safir_for_all_thermal(self):
-        for i, file_in in enumerate(self.cfd_thermal_infiles):
+    def run_safir_for_all_thermal(self, iteration):
+        for file_in in self.cfd_thermal_infiles:
             file = os.path.join(self.working_dir, file_in)
             safir_tools.run_safir(file, self.safir_exe_path, fix_rlx=False)
-            [os.rename(f'{file[:-3]}.{e}', f'{file[:-3]}_{i}.{e}') for e in ['XML', 'OUT']]
-
-
-# def find_transfer_domain_hz(transfer_file):
-#     # domain = []     # [XA, XB, YA, YB, ZA, ZB]
-#     with open(transfer_file, 'r+') as file:
-#         transfer_data_file = file.readlines()
-#         for num in range(len(transfer_data_file)):
-#             if 'XYZ_INTENSITIES' in transfer_data_file[num]:
-#                 start = num + 1
-#                 break
-#         for num in range(len(transfer_data_file))[start:]:
-#             if 'NI' in transfer_data_file[num]:
-#                 end = num - 1
-#                 break
-#
-#     all_x, all_y, all_z = [], [], []
-#
-#     for xyzline in transfer_data_file[start:end]:
-#         x, y, z = xyzline.split()
-#         all_x.append(x)
-#         all_y.append(y)
-#         all_z.append(z)
-#     domain = [min(all_x), max(all_x), min(all_y), max(all_y), min(all_z), max(all_z)]
-#     domain = [float(x) for x in domain]
-#
-#     # tutaj znajduje granice domeny (box) pliku transferowego
-#     return domain
+            [os.rename(f'{file[:-3]}.{e}', f'{file[:-3]}_{iteration}.{e}') for e in ['XML', 'OUT']]
 
 
 def find_transfer_domain(transfer_file):
