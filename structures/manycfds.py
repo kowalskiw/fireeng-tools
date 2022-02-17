@@ -3,6 +3,7 @@ import safir_tools
 import shutil
 import sys
 import os
+import argparse as ar
 
 """Reviewed version of manycfds.py script by zarooba01"""
 
@@ -12,7 +13,7 @@ import os
     3) another object named BeamType or Section - use it to operate on thermal input files and to store its attributes
     (paths, original and newbeamtype etc.) and methods (like change_in() or run())
     4) finding elements within domain with their exact (according to the integration point) locations
-    5) taking arguments with flags in console mode (-c/---config, -t/--transfer etc.)
+     DONE -> 5) taking arguments with flags in console mode (-c/---config, -t/--transfer etc.) <- DONE
     
     ~kowalskiw~"""
 
@@ -73,8 +74,10 @@ class ManyCfds:
 
         self.inFile_backup = self.get_info_from_infile()
         self.inFile = self.get_info_from_infile()
-
         self.cfd_thermal_infiles = self.get_all_thermal_infiles()
+
+
+        self.main()
 
     def main(self):
         self.add_rows()  # doubling beam types with cfd version of each section
@@ -214,11 +217,20 @@ def find_transfer_domain(transfer_file):
     # transfer domain boundaries
     return domain  # [XA, XB, YA, YB, ZA, ZB]
 
+def get_arguments():
+    parser = ar.ArgumentParser(description='Run many cfds')
+    parser.add_argument('-c', '--config_dir', help='Path to configuration directory', required=True)
+    parser.add_argument('-t', '--transfer_dir', help='Path transfer directory', required=True)
+    parser.add_argument('-m', '--mechanical_input_file', help='Mechanical input file', required=True)
+    parser.add_argument('-s', '--safir_exe_path', help='Path to SAFIR executable', default='/safir.exe')
+    args = parser.parse_args()
+   
+    return args
+
 
 if __name__ == '__main__':
+    args = get_arguments()
+    for key, value in args.__dict__.items():
+        args.__dict__[key] = os.path.abspath(value)
 
-    arguments = sys.argv[1:]
-    for i, a in enumerate(arguments):
-        arguments[i] = os.path.abspath(a)
-    manycfds = ManyCfds(*arguments)
-    manycfds.main()
+    manycfds = ManyCfds(**args.__dict__)
