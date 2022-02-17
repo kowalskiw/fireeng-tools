@@ -273,7 +273,7 @@ class ThermalTEM:
 
     # default calculations (preparations should have already been done)
     def run(self, safir_exe):
-        run_safir('{}\{}.in'.format(self.sim_dir, self.chid), safir_exe_path=safir_exe)
+        run_safir('{}\{}.in'.format(self.sim_dir, self.chid), safir_exe_path=safir_exe, fix_rlx=False)
         self.insert_tor()
 
 
@@ -402,7 +402,7 @@ class ThermalTSH:
 
     # default calculations (preparations should have already been done)
     def run(self, safir_exe):
-        run_safir('{}\{}.in'.format(self.sim_dir, self.chid), safir_exe_path=safir_exe)
+        run_safir('{}\{}.in'.format(self.sim_dir, self.chid), safir_exe_path=safir_exe, fix_rlx=False)
 
 
 class Mechanical:
