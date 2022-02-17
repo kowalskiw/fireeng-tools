@@ -32,13 +32,13 @@ def repair_relax_in_xml(xml_file_path):
 # running SAFIR simulation
 def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True, fix_rlx=True, verbose=False):
     start = dt.now()
-    print(f'[INFO] Calculations started at {start}') if print_time else None
     backpath = getcwd()
     dirpath = dirname(in_file_path)
     chdir(dirpath)
     chid = basename(in_file_path)[:-3]
 
-    print(f'Reading {chid}.in file...')
+    print(f'[INFO] Calculations started at {start}') if print_time else print(f'Running {chid}...')
+    print(f'Reading {chid}.in file...') if print_time else None
     process = subprocess.Popen([safir_exe_path, chid], shell=False, stdout=subprocess.PIPE)
     print_all = verbose
     success = True
@@ -81,7 +81,7 @@ def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True
             return -1
 
 
-def repair_relax(path_to_xml, copyxml=True):
+def repair_relax(path_to_xml, copyxml=True, verb=True):
     rlx_lines = []
     index = 0
     fixed = 0
@@ -99,7 +99,7 @@ def repair_relax(path_to_xml, copyxml=True):
     with open(f'{path_to_xml[:-4]}_fixed.XML' if copyxml else path_to_xml, 'w') as newxml:
         newxml.writelines(rlx_lines)
 
-    print(f'[OK] {fixed} XML file lines fixed (relaxations bug)')
+    print(f'[OK] {fixed} XML file lines fixed (relaxations bug)') if verb else None
 
     return 0
 
