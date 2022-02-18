@@ -4,6 +4,7 @@ import shutil
 import sys
 import os
 import argparse as ar
+from file_read_backwards import FileReadBackwards as frb
 
 """Reviewed version of manycfds.py script by zarooba01"""
 
@@ -18,50 +19,71 @@ import argparse as ar
     ~kowalskiw~"""
 
 
-def change_in(inFile, thermal_in_file):
-    # new beam type is old + original beam types number + 1 (starts with 1 not 0)
-    newbeamtype = 1 + inFile.beamparameters['beamtypes'].index(os.path.basename(thermal_in_file)[4:-3]) + \
-                  len(inFile.beamparameters['beamtypes'])
-    # open thermal analysis input file
-    with open(thermal_in_file) as file:
-        init = file.readlines()
+# fix partially calculated transfer file
+def repair_cfdtxt(radffile):
+    ch_nsteps = False
+    new_lines = []
+    count_steps = -3
+    read_time = 0
+    t_end = -1
 
-    # save backup of input file
-    with open(f'{thermal_in_file}.bak', 'w') as file:
-        file.writelines(init)
-
-    # make changes
-    for no in range(len(init)):
-        line = init[no]
-        # type of calculation
-        if line == 'MAKE.TEM\n':
-            init[no] = 'MAKE.TEMCD\n'
-
-            # insert beam type
-            [init.insert(no + 1, i) for i in ['BEAM_TYPE {}\n'.format(newbeamtype), '{}.in\n'.format('dummy')]]
-
-        # change thermal attack functions
-        elif line.startswith('   F  ') and 'FISO' in line:  # choose heating boundaries with FISO or FISO0 frontier
-            # change FISO0 to FISO
-            if 'FISO0' in line:
-                line = 'FISO'.join(line.split('FISO0'))
-
-            # choose function to be changed with
-            thermal_attack = 'CFD'
-
-            if 'F20' not in line:
-                init[no] = 'FLUX {}'.format(thermal_attack.join(line[4:].split('FISO')))
+    # extract numbers from lines
+    def numb_from_line(l, type=float):
+        try:
+            if type == float:
+                return float(''.join(l.split()))
             else:
-                init[no] = 'FLUX {}'.format('NO'.join((thermal_attack.join(line[4:].split('FISO'))).split('F20')))
-                init.insert(no + 1, 'NO'.join(line.split('FISO')))
+                return int(''.join(l.split()))
+        except ValueError:
+            print(f'errored value: "{l}"')
+            exit(-1)
 
-        # change convective heat transfer coefficient of steel to 35 in locafi mode according to EN1991-1-2
-        elif 'STEEL' in line:
-            init[no + 1] = '{}'.format('35'.join(init[no + 1].split('25')))
+    # find two last time steps in the transfer file
+    with frb(radffile, encoding='utf-8') as backward:
+        # getting lines by lines starting from the last line up
+        for line in backward:
 
-    # write changed file
-    with open(thermal_in_file, 'w') as file:
-        file.writelines(init)
+            if 'TIME' in line:
+                read_time = 1 if read_time == 0 else 2
+
+            if read_time == 1:
+                t_end = numb_from_line(previous)
+                read_time = -1
+            elif read_time == 2:
+                interval = t_end - numb_from_line(previous)
+                break
+
+            previous = line
+
+    nsteps = int(t_end / interval) + 1  # number of time steps present in the transfer file
+
+    # check if the number of time steps in file is consistent with specified in the transfer file preamble
+    with open(radffile) as file:
+        for line in file:
+            if 'NP' in line:
+                ch_nsteps = False
+
+            #
+            if ch_nsteps:
+                count_steps += 1
+                if count_steps == -2:
+                    # check if NSTEPS is OK
+                    if numb_from_line(line, type=int) == nsteps:
+                        return 0
+
+                    new_lines.append(f'    {nsteps}\n')
+                    continue
+                if count_steps > nsteps:
+                    continue
+
+            if 'NSTEPS' in line:
+                ch_nsteps = True
+
+            new_lines.append(line)
+    
+    # overwrite invalid file
+    with open(radffile, 'w') as file:
+        file.writelines(new_lines)
 
 
 class ManyCfds:
@@ -76,9 +98,6 @@ class ManyCfds:
         self.inFile = self.get_info_from_infile()
         self.cfd_thermal_infiles = self.get_all_thermal_infiles()
 
-
-        self.main()
-
     def main(self):
         self.add_rows()  # doubling beam types with cfd version of each section
         self.double_beam_num()  # doubling beam types number
@@ -86,8 +105,59 @@ class ManyCfds:
         self.change_in_for_infiles()  # modify thermal attack in all 'cfd_*.IN' from FISO to CFD
         # iterate over transfer files and calculate elements within each domain
         for i, transfer_file in enumerate(os.listdir(self.transfer_dir)):
-            if self.operate_on_cfd(transfer_file):
-                self.run_safir_for_all_thermal(i)
+                self.run_safir_for_all_thermal(i, self.operate_on_cfd(transfer_file))
+
+    def change_in(self, thermal_in_file):
+        # new beam type is old + original beam types number + 1 (starts with 1 not 0)
+        newbeamtype = 1 + self.inFile.beamparameters['beamtypes'].index(os.path.basename(thermal_in_file)[4:-3]) + \
+                      len(self.inFile.beamparameters['beamtypes'])
+        # open thermal analysis input file
+        with open(thermal_in_file) as file:
+            init = file.readlines()
+
+        # save backup of input file
+        with open(f'{thermal_in_file}.bak', 'w') as file:
+            file.writelines(init)
+
+        # make changes
+        for no in range(len(init)):
+            line = init[no]
+            # type of calculation
+            if line == 'MAKE.TEM\n':
+                init[no] = 'MAKE.TEMCD\n'
+
+                # insert beam type
+                [init.insert(no + 1, i) for i in ['BEAM_TYPE {}\n'.format(newbeamtype), '{}.in\n'.format('dummy')]]
+
+            # change thermal attack functions
+            elif line.startswith('   F  ') and 'FISO' in line:  # choose heating boundaries with FISO or FISO0 frontier
+                # change FISO0 to FISO
+                if 'FISO0' in line:
+                    line = 'FISO'.join(line.split('FISO0'))
+
+                # choose function to be changed with
+                thermal_attack = 'CFD'
+
+                if 'F20' not in line:
+                    init[no] = 'FLUX {}'.format(thermal_attack.join(line[4:].split('FISO')))
+                else:
+                    init[no] = 'FLUX {}'.format('NO'.join((thermal_attack.join(line[4:].split('FISO'))).split('F20')))
+                    init.insert(no + 1, 'NO'.join(line.split('FISO')))
+
+            # change convective heat transfer coefficient of steel to 35 in locafi mode according to EN1991-1-2
+            elif 'STEEL' in line:
+                init[no + 1] = '{}'.format('35'.join(init[no + 1].split('25')))
+
+            # change T_END
+            elif ('TIME' in line) and ('END' not in line):
+                try:
+                    init[no + 1] = '    '.join([init[no + 1].split()[0], str(self.inFile.t_end), '\n'])
+                except IndexError:
+                    pass
+
+        # write changed file
+        with open(thermal_in_file, 'w') as file:
+            file.writelines(init)
 
     def get_info_from_infile(self):
         """
@@ -132,16 +202,23 @@ class ManyCfds:
 
     def change_in_for_infiles(self):
         for thermal_infile in self.cfd_thermal_infiles:
-            change_in(self.inFile, os.path.join(self.working_dir, thermal_infile))
+            self.change_in(os.path.join(self.working_dir, thermal_infile))
 
     def operate_on_cfd(self, transfer_file):
         actual_file = os.path.join(self.transfer_dir, transfer_file)
+        
+        repair_cfdtxt(actual_file)
+        
         domain = find_transfer_domain(actual_file)
+        
         shutil.copyfile(actual_file, os.path.join(self.working_dir, 'cfd.txt'))
 
         inFileCopy = copy.deepcopy(self.inFile)
         beamparams = inFileCopy.beamparameters
         file_lines = inFileCopy.file_lines
+
+        btypes_in_domain = []
+
         """
         ADDING ELEMENTS INSIDE DOMAIN
         """
@@ -172,11 +249,18 @@ class ManyCfds:
         lines = 0
         for line in file_lines[beamparams['elemstart']:]:
             elem_data = line.split()
-            if 'ELEM' not in line:
+            if 'ELEM' not in line or 'RELAX' in line:
                 break
             if int(elem_data[1]) in elements_inside_domain:
                 actual_line = beamparams['elemstart'] + lines
                 new_beam_number = int(elem_data[-1]) + beamparams['beamnumber']
+
+                # add the beam type to be calculated
+                try:
+                    btypes_in_domain.index(int(elem_data[-1]) - 1)
+                except ValueError:
+                    btypes_in_domain.append(int(elem_data[-1]) - 1)
+
                 file_lines[actual_line] = f'  \t{"    ".join(elem_data[:-1])}\t{new_beam_number}\n'
             lines += 1
 
@@ -185,10 +269,10 @@ class ManyCfds:
             for line in file_lines:
                 f.write(line)
 
-        return True
+        return [self.cfd_thermal_infiles[i] for i in btypes_in_domain]
 
-    def run_safir_for_all_thermal(self, iteration):
-        for file_in in self.cfd_thermal_infiles:
+    def run_safir_for_all_thermal(self, iteration, queue):
+        for file_in in queue:
             file = os.path.join(self.working_dir, file_in)
             safir_tools.run_safir(file, self.safir_exe_path, fix_rlx=False)
             [os.rename(f'{file[:-3]}.{e}', f'{file[:-3]}_{iteration}.{e}') for e in ['XML', 'OUT']]
@@ -234,3 +318,4 @@ if __name__ == '__main__':
         args.__dict__[key] = os.path.abspath(value)
 
     manycfds = ManyCfds(**args.__dict__)
+    manycfds.main()

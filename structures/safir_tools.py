@@ -199,6 +199,8 @@ class InFile:
         self.solids = self.get(3)
         self.beamparameters = self.get_beamparameters()
 
+        self.t_end = self.get_time()
+
     # import entities
     def get(self, entity_type):
         got = []
@@ -232,6 +234,11 @@ class InFile:
                     got.append([int(i) for i in lsplt[1:]])  # entity tag and lower entities tags
 
         return got
+
+    def get_time(self):
+        for i, l in enumerate(reversed(self.file_lines)):
+            if 'ENDTIME' in l:
+                return float(self.file_lines[-i-2].split()[1])
 
     def get_beamparameters(self):
         beamparameters = {}

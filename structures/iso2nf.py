@@ -6,6 +6,7 @@ from shutil import copy2
 from sys import argv
 import argparse as ar
 from safir_tools import run_safir
+from manycfds import ManyCfds
 
 # # print progress of process
 # def progress_bar(title, current, total, bar_length=20):
@@ -592,25 +593,33 @@ class Check:
 def run_user_mode(sim_no, arguments):
     start = sec()
     m = Mechanical(arguments.results[sim_no], fire_model=arguments.model)
-    m.make_thermals(arguments.config)
-
-    # check the set up
-    Check(m).full_mech() if arguments.check else print('[WARNING] No checking routine applied')
 
     # run thermal analyses
-    for t in m.thermals:
-        st = sec()
-        t.change_in(m.chid)
-        t.run(arguments.safir)
-        print('Runtime of "{}" thermal analysis: {}\n'.format(t.chid, dt(seconds=int(sec() - st))))
+    m.make_thermals(arguments.config)
+
+    if m.model in {'cfd', 'fds'}:
+        # enable using many cfd transfer files
+        ManyCfds(m.sim_dir, f'{arguments.config}/transfer_files/', m.input_file, arguments.safir).main()
+
+        print(f'Runtime of CFD-heating thermal analysis: {dt(seconds=int(sec() - start))}\n')
+
+    else:
+        # check the set up
+        Check(m).full_mech() if arguments.check else print('[WARNING] No checking routine applied')
+
+        for t in m.thermals:
+            st = sec()
+            t.change_in(m.chid)
+            t.run(arguments.safir)
+            print(f'Runtime of "{t.chid}" thermal analysis: {dt(seconds=int(sec() - st))}\n')
 
     # run mechanical analysis
     st = sec()
     m.change_in()
     m.run(arguments.safir)
-    print('Runtime of "{}" mechanical analysis: {}\n'.format(m.chid, dt(seconds=int(sec() - st))))
+    print(f'Runtime of "{m.chid}" mechanical analysis: {dt(seconds=int(sec() - st))}\n')
 
-    print('Summary "{}" runtime: {}\n'.format(m.chid, dt(seconds=int(sec() - start))))
+    print(f'Summary "{m.chid}" runtime: {dt(seconds=int(sec() - start))}\n')
 
 
 def get_arguments(from_argv):
@@ -622,7 +631,7 @@ def get_arguments(from_argv):
                                               'cfd/fds)', default='locafi')
     parser.add_argument('-r', '--results', nargs='+', help='Paths to mechanical analysis IN files (one scenario ->'
                                                            'one IN file)', required=True)
-    parser.add_argument('-ch', '--check', help='Running checking functions before analyzing (boolean)', default=True)
+    parser.add_argument('-ch', '--check', help='Running checking functions before analyzing (boolean)', default=False, nargs='?', const=True)
     argums = parser.parse_args(args=from_argv)
 
     # change paths to absolute
