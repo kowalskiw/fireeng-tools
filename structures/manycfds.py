@@ -239,7 +239,7 @@ class ManyCfds:
         print(f'[INFO] There are {len(elements_inside_domain)} BEAM elements located in the {domain} domain:')
 
         if len(elements_inside_domain) == 0:
-            return False
+            return []   # empty list - no thermal analysis will be run
         else:
             print(f'{elements_inside_domain}')
 
@@ -301,6 +301,7 @@ def find_transfer_domain(transfer_file):
     # transfer domain boundaries
     return domain  # [XA, XB, YA, YB, ZA, ZB]
 
+
 def get_arguments():
     parser = ar.ArgumentParser(description='Run many cfds')
     parser.add_argument('-c', '--config_dir', help='Path to configuration directory', required=True)
@@ -317,5 +318,5 @@ if __name__ == '__main__':
     for key, value in args.__dict__.items():
         args.__dict__[key] = os.path.abspath(value)
 
-    manycfds = ManyCfds(**args.__dict__)
-    manycfds.main()
+    mc = ManyCfds(**args.__dict__)
+    mc.main()
