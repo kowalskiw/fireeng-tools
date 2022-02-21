@@ -30,7 +30,7 @@ def repair_relax_in_xml(xml_file_path):
 
 
 # running SAFIR simulation
-def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True, fix_rlx=True, verbose=False):
+def run_safir(in_file_path, safir_exe_path='./safir.exe', print_time=True, fix_rlx=True, verbose=False):
     start = dt.now()
     backpath = getcwd()
     dirpath = dirname(in_file_path)
@@ -43,6 +43,7 @@ def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True
     print_all = verbose
     success = True
     count = 0
+
     # clear output
     while True:
         if process.poll() is not None:
@@ -197,6 +198,9 @@ class InFile:
         self.beams = self.get(1)
         self.shells = self.get(2)
         self.solids = self.get(3)
+        self.beamparameters = self.get_beamparameters()
+
+        self.t_end = self.get_time()
 
     # import entities
     def get(self, entity_type):
@@ -231,6 +235,36 @@ class InFile:
                     got.append([int(i) for i in lsplt[1:]])  # entity tag and lower entities tags
 
         return got
+
+    def get_time(self):
+        for i, l in enumerate(reversed(self.file_lines)):
+            if 'ENDTIME' in l:
+                return float(self.file_lines[-i - 2].split()[1])
+
+    def get_beamparameters(self):
+        beamparameters = {}
+        lines = 0
+
+        # where NODOFBEAM appears - beamparameters in inFile.file_lines starts
+        beamparameters['index'] = [x for x in range(len(self.file_lines)) if 'NODOFBEAM' in self.file_lines[x]][0]
+        beamparameters['beamtypes'] = []
+
+        # where beam line appears (begining of the file)
+        beamparameters['beamline'] = [x for x in range(len(self.file_lines)) if 'BEAM' in self.file_lines[x]][0]
+        beamparameters['elemstart'] = 0
+
+        for line in self.file_lines[beamparameters['index'] + 1:]:
+            if "ELEM" not in line:
+                if line.endswith(".tem\n"):
+                    beamparameters['beamtypes'].append(line[:-5])
+                if line.endswith(".tem"):
+                    beamparameters['beamtypes'].append(line[:-4])
+                lines += 1
+            else:
+                beamparameters['elemstart'] = beamparameters['index'] + 2 + lines
+
+        beamparameters['beamnumber'] = len(beamparameters['beamtypes'])
+        return beamparameters
 
 
 # if you want to run a function from this file, add the function name as the first parameter

@@ -6,6 +6,7 @@ from shutil import copy2
 from sys import argv
 import argparse as ar
 from safir_tools import run_safir
+from manycfds import ManyCfds
 
 '''New, simpler and more object-oriented code'''
 
@@ -51,11 +52,11 @@ def read_mech_input(path_to_frame):
             if len(tems[element[-1]]) < 3:
                 number = element[1]
                 for i in range(5 - len(number)):
-                    number = '0{}'.format(number)
+                    number = f'0{number}'
                 if beam_read:
-                    tems[element[-1]].append('b{}_1.tem'.format(number))
+                    tems[element[-1]].append(f'b{number}_1.tem')
                 elif shell_read:
-                    tshs[element[-1]].append('s{}_1.tem'.format(number))
+                    tshs[element[-1]].append(f's{number}_1.tem')
 
         elif 'TIME' in lin.split():
             t_end = float(frame_lines[no + 1].split()[1])
@@ -66,9 +67,9 @@ def read_mech_input(path_to_frame):
 # return the input file path regarding to GiD catalogues or files with no further directory tree
 # (make this comment better, please)
 def find_paths(config_path, chid, shell=False):
-    gid_paths = ['{0}/{1}.gid/{1}{2}'.format(config_path, chid, i) for i in ['.in', '-1.T0R']]
-    other_in_path = '{0}/{1}.in'.format(config_path, chid)
-    other_tor_paths = ['{0}/{1}{2}'.format(config_path, chid, i) for i in ['-1.T0R', 'T0R', 't0r', 'tor', 'TOR']]
+    gid_paths = [f'{config_path}/{chid}.gid/{chid}{i}' for i in ['.in', '-1.T0R']]
+    other_in_path = f'{config_path}/{chid}.in'
+    other_tor_paths = [f'{config_path}/{chid}{i}' for i in ['-1.T0R', 'T0R', 't0r', 'tor', 'TOR']]
     expected_paths_no = 2
 
     if shell:
@@ -96,8 +97,8 @@ def find_paths(config_path, chid, shell=False):
     if len(real_paths) == expected_paths_no:
         return real_paths
     else:
-        raise FileNotFoundError('[ERROR] It is not possible to locate your {} thermal or torsion results. '
-                                'Check config path {}.'.format(chid, config_path))
+        raise FileNotFoundError(f'[ERROR] It is not possible to locate your {chid} thermal or torsion results. '
+                                f'Check config path {config_path}.')
 
 
 class ThermalTEM:
@@ -117,11 +118,11 @@ class ThermalTEM:
     # changing input file form iso curve to natural fire mode
     def change_in(self, mech_chid):
         # open thermal analysis input file
-        with open('{}/{}.in'.format(self.sim_dir, self.chid)) as file:
+        with open(f'{self.sim_dir}/{self.chid}.in') as file:
             init = file.readlines()
 
         # save backup of input file
-        with open('{}/{}.bak'.format(self.sim_dir, self.chid), 'w') as file:
+        with open(f'{self.sim_dir}/{self.chid}.bak', 'w') as file:
             file.writelines(init)
 
         # make changes
@@ -137,7 +138,7 @@ class ThermalTEM:
                     init[no] = 'MAKE.TEMHA\n'
 
                 # insert beam type
-                [init.insert(no + 1, i) for i in ['BEAM_TYPE {}\n'.format(self.beam_type), '{}.IN\n'.format(mech_chid)]]
+                [init.insert(no + 1, i) for i in [f'BEAM_TYPE {self.beam_type}\n', f'{mech_chid}.IN\n']]
 
             # change thermal attack functions
             elif line.startswith('   F  ') and 'FISO' in line:  # choose heating boundaries with FISO or FISO0 frontier
@@ -160,14 +161,14 @@ class ThermalTEM:
                     init[no] = 'F20'.join(line.split('FISO'))
 
                 elif 'F20' not in line:
-                    init[no] = 'FLUX {}'.format(thermal_attack.join(line[4:].split('FISO')))
+                    init[no] = f'FLUX {thermal_attack.join(line[4:].split("FISO"))}'
                 else:
-                    init[no] = 'FLUX {}'.format('NO'.join((thermal_attack.join(line[4:].split('FISO'))).split('F20')))
+                    init[no] = f'FLUX {"NO".join((thermal_attack.join(line[4:].split("FISO"))).split("F20"))}'
                     init.insert(no + 1, 'NO'.join(line.split('FISO')))
 
             # change convective heat transfer coefficient of steel to 35 in locafi mode according to EN1991-1-2
             elif self.model in {'lcf', 'locafi', 'hsm', 'hasemi'} and 'STEEL' in line:
-                init[no + 1] = '{}'.format('35'.join(init[no + 1].split('25')))
+                init[no + 1] = "35".join(init[no + 1].split("25"))
 
             # change T_END
             elif ('TIME' in line) and ('END' not in line):
@@ -177,7 +178,7 @@ class ThermalTEM:
                     pass
 
         # write changed file
-        with open('{}/{}.IN'.format(self.sim_dir, self.chid), 'w') as file:
+        with open(f'{self.sim_dir}/{self.chid}.IN', 'w') as file:
             file.writelines(init)
 
     # insert torsion results to the first TEM file
@@ -186,12 +187,12 @@ class ThermalTEM:
 
         # check if torsion results already are in TEM file
         try:
-            tem_file_path = '{}/{}'.format(self.sim_dir, self.first)
+            tem_file_path = f'{self.sim_dir}/{self.first}'
             with open(tem_file_path) as file:
                 tem = file.read()
 
         except FileNotFoundError:
-            raise FileNotFoundError('[ERROR] There is no proper TEM file ({}) in {}'.format(self.first, self.sim_dir))
+            raise FileNotFoundError(f'[ERROR] There is no proper TEM file ({self.first}) in {self.sim_dir}')
 
         with open(self.config_paths[1]) as file:
             tor = file.read()
@@ -207,7 +208,7 @@ class ThermalTEM:
             if all(t in tor for t in ['GJ', 'w\n']):
                 tor_indexes = [tor.index(i) for i in ['w\n', 'COLD']]
             else:
-                raise ValueError('[ERROR] Torsion results not found in the {} file'.format(self.config_paths[1]))
+                raise ValueError(f'[ERROR] Torsion results not found in the {self.config_paths[1]} file')
 
             # insert torsion results to thermal results file
             tem_parts = []
@@ -219,7 +220,7 @@ class ThermalTEM:
 
             if not tem_parts:
                 raise ValueError('[ERROR] Flux constraint annotation ("HOT", "CFD", "HASEMI" or "LOCAFI") not'
-                                 'found in {} file'.format(self.first))
+                                 f'found in {self.first} file')
 
         # change for cold if necessary
         if self.model in {'cold', 'f20'}:
@@ -249,7 +250,7 @@ class ThermalTEM:
             v = False
             pt = True
 
-        run_safir('{}/{}.in'.format(self.sim_dir, self.chid), safir_exe_path=safir_exe, print_time=pt, verbose=v)
+        run_safir(f'{self.sim_dir}/{self.chid}.IN', safir_exe_path=safir_exe, print_time=pt, verbose=v, fix_rlx=False)
         self.insert_tor()
 
 
@@ -269,14 +270,14 @@ class ThermalTSH:
 
     # change input file to natural fire calculations
     def change_in(self, mech_chid):
-        in_file_path = '{}/{}.in'.format(self.sim_dir, self.chid)
+        in_file_path = f'{self.sim_dir}/{self.chid}.IN'
 
         # open thermal analysis input file
         with open(in_file_path) as file:
             init = file.readlines()
 
         # save backup of input file
-        with open('{}.bak'.format(self.sim_dir, self.chid), 'w') as file:
+        with open(f'{self.sim_dir}/{self.chid}.bak', 'w') as file:
             file.writelines(init)
 
         # make changes
@@ -293,8 +294,7 @@ class ThermalTSH:
                     init[no] = 'MAKE.TSHHA\n'
 
                 # insert shell type and mechanical file reference
-                [init.insert(no + 1, i) for i in
-                 ['{}.IN\n'.format(mech_chid), 'SHELL_TYPE {}\n'.format(self.shell_type)]]
+                [init.insert(no + 1, i) for i in [f'{mech_chid}.IN\n', f'SHELL_TYPE {self.shell_type}\n']]
 
             # change thermal attack functions
             elif line.startswith('   F  ') and 'FISO' in line:  # choose heating boundaries with FISO or FISO0 frontier
@@ -318,14 +318,14 @@ class ThermalTSH:
                 if thermal_attack == 'F20':
                     init[no] = 'F20'.join(line.split('FISO'))
                 elif 'F20' not in line:
-                    init[no] = 'FLUX {}'.format(thermal_attack.join(line[4:].split('FISO')))
+                    init[no] = f'FLUX {thermal_attack.join(line[4:].split("FISO"))}'
                 else:
-                    init[no] = 'FLUX {}'.format('NO'.join((thermal_attack.join(line[4:].split('FISO'))).split('F20')))
+                    init[no] = f'FLUX {"NO".join((thermal_attack.join(line[4:].split("FISO"))).split("F20"))}'
                     init.insert(no + 1, 'NO'.join(line.split('FISO')))
 
             # change convective heat transfer coefficient of steel to 35 in locafi mode according to EN1991-1-2
             elif self.model in {'hsm', 'hasemi'} and 'STEEL' in line:
-                init[no + 1] = '{}'.format('35'.join(init[no + 1].split('25')))
+                init[no + 1] = '35'.join(init[no + 1].split('25'))
 
             # change T_END
             elif ('TIME' in line) and ('END' not in line):
@@ -370,8 +370,7 @@ class ThermalTSH:
             rebars = 0  # no rebars
 
             with open(self.first, 'w') as file:
-                file.writelines([' THICKNESS {}\n MATERIAL {}\n REBARS {}\n\n'.format(thickness, material, rebars)] +
-                                shell_result)
+                file.writelines([f' THICKNESS {thickness}\n MATERIAL {material}\n REBARS {rebars}\n\n'] + shell_result)
 
     def in2sim_dir(self):
         copy2(self.config_path, self.sim_dir)
@@ -391,7 +390,7 @@ class ThermalTSH:
             v = False
             pt = True
 
-        run_safir('{}/{}.in'.format(self.sim_dir, self.chid), safir_exe_path=safir_exe, print_time=pt, verbose=v)
+        run_safir(f'{self.sim_dir}/{self.chid}.IN', safir_exe_path=safir_exe, print_time=pt, verbose=v, fix_rlx=False)
 
 
 class Mechanical:
@@ -423,24 +422,24 @@ class Mechanical:
             init = file.readlines()
 
         # save backup of input file
-        with open('{}/{}.bak'.format(self.sim_dir, self.chid), 'w') as file:
+        with open(f'{self.sim_dir}/{self.chid}.bak', 'w') as file:
             file.writelines(init)
 
         # change to STATIC COLD mode
         if self.model in {'cold', 'f20'}:
             for line in init.copy():
                 if 'NCORES' in line:
-                    init[init.index(line) + 1] = 'STATICCOLD  {}\n'.format(init[init.index(line) + 1].split()[-1])
+                    init[init.index(line) + 1] = f'STATICCOLD  {init[init.index(line) + 1].split()[-1]}\n'
                 if any(m in line for m in ['M_BEAM', 'M_NODE', 'MASS', 'END_MASS']):
                     init.remove(line)
 
         # change TEM and TSH names in IN file (ent.e. 'hea180.tem' -> 'b00001_1.tem')
         else:
             for t in self.thermals:
-                init[t.line_no] = '{}\n'.format(t.first)
+                init[t.line_no] = f'{t.first}\n'
 
         # save changes
-        with open('{}'.format(self.input_file), 'w') as file:
+        with open(self.input_file, 'w') as file:
             file.writelines(init)
 
     def run(self, safir_exe, verb):
@@ -473,13 +472,13 @@ class Check:
             with open(thermal.config_paths[1]) as file:
                 tor = file.read()
         except FileNotFoundError:
-            return ['Torsion file of "{}" profile was not found'.format(thermal.chid)]
+            return [f'Torsion file of "{thermal.chid}" profile was not found']
 
         # looking for start of torsion results regexp in T0R file
         try:
             [tor.index(i) for i in ['w\n', 'GJ']]
         except ValueError:
-            info.append(['Torsion results were not found in "{}" TOR file'.format(thermal.chid)])
+            info.append([f'Torsion results were not found in "{thermal.chid}" TOR file'])
 
         # find the number of elements in torsion file
         n_tor = int(tor[:50].split('NFIBERBEAM')[1].split()[0])
@@ -489,12 +488,11 @@ class Check:
             with open(thermal.config_paths[0]) as file:
                 n_in = int(file.read()[:500].split('SOLID')[1].split()[0])
         except FileNotFoundError:
-            return ['Thermal analysis input file of "{}" profile was not found'.format(thermal.chid)]
+            return [f'Thermal analysis input file of "{thermal.chid}" profile was not found']
 
         # ERROR if differences found
         if n_in != n_tor:
-            info.append(['Numbers of fibers in torsion ({}) and thermal ({}) analyses do not match.'.format(
-                n_tor, n_in)])
+            info.append([f'Numbers of fibers in torsion ({n_tor}) and thermal ({n_in}) analyses do not match.'])
 
         return info
 
@@ -502,10 +500,10 @@ class Check:
         info = []
 
         if any(forb in file_name for forb in ['.', ' ', ]):
-            info.append('There is forbidden character in filename "{}"'.format(file_name))
+            info.append(f'There is forbidden character in filename "{file_name}"')
 
         if file_name.lower() != file_name:
-            info.append('Filename "{}" has to be lowercase'.format(file_name))
+            info.append(f'Filename "{file_name}" has to be lowercase')
 
         return info
 
@@ -524,11 +522,11 @@ class Check:
 
         # write with updated nfiber if necessary
         if nsolid_max > nfiber:
-            print('[WARNING] NFIBER is too low - is {} and should be {}. I\'ll try to fix it.'.format(nfiber, nsolid_max))
+            print(f'[WARNING] NFIBER is too low - is {nfiber} and should be {nsolid_max}. I\'ll try to fix it.')
 
             for line in in_mech_file:
                 if 'NFIBER' in line:
-                    in_mech_file[in_mech_file.index(line)] = '    NFIBER    {}\n'.format(nsolid_max)
+                    in_mech_file[in_mech_file.index(line)] = '    NFIBER    {nsolid_max}\n'
                     break
 
             with open(self.mech.input_file, 'w') as file:
@@ -548,7 +546,7 @@ class Check:
 
         if len(info) > 0:
             print('[INFO] While checking your input files I found some mistakes:\n', '\n'.join(info))
-            raise ValueError('[ERROR] {} simulation was improperly set up.'.format(self.mech.chid))
+            raise ValueError(f'[ERROR] {self.mech.chid} simulation was improperly set up.')
         else:
             print('[OK] Config files seems to be OK')
 
@@ -594,18 +592,26 @@ class Check:
 def run_user_mode(sim_no, arguments):
     start = sec()
     m = Mechanical(arguments.results[sim_no], fire_model=arguments.model)
-    m.make_thermals(arguments.config)
-
-    # check the set up
-    Check(m).full_mech() if arguments.check else print('[WARNING] No checking routine applied')
 
     # run thermal analyses
-    for t in m.thermals:
-        st = sec()
-        t.change_in(m.chid)
-        t.run(arguments.safir, arguments.verbose)
-        if arguments.verbose != 'warning':
-            print('Runtime of "{}" thermal analysis: {}\n'.format(t.chid, dt(seconds=int(sec() - st))))
+    m.make_thermals(arguments.config)
+
+    if m.model in {'cfd', 'fds'}:
+        # enable using many cfd transfer files
+        ManyCfds(m.sim_dir, f'{arguments.config}/transfer_files/', m.input_file, arguments.safir).main()
+
+        print(f'Runtime of CFD-heating thermal analysis: {dt(seconds=int(sec() - start))}\n')
+
+    else:
+        # check the set up
+        Check(m).full_mech() if arguments.check else print('[WARNING] No checking routine applied')
+
+        for t in m.thermals:
+            st = sec()
+            t.change_in(m.chid)
+            t.run(arguments.safir, arguments.verbose)
+            if arguments.verbose != 'warning':
+                print(f'Runtime of "{t.chid}" thermal analysis: {dt(seconds=int(sec() - st))}\n')
 
     # run mechanical analysis
     st = sec()
@@ -613,14 +619,13 @@ def run_user_mode(sim_no, arguments):
     m.run(arguments.safir, arguments.verbose)
 
     if arguments.verbose != 'warning':
-        print('Runtime of "{}" mechanical analysis: {}\n'.format(m.chid, dt(seconds=int(sec() - st))))
+        print(f'Runtime of "{m.chid}" mechanical analysis: {dt(seconds=int(sec() - st))}\n')
 
     if arguments.verbose != 'warning':
-        print('Summary "{}" runtime: {}\n'.format(m.chid, dt(seconds=int(sec() - start))))
+        print(f'Summary "{m.chid}" runtime: {dt(seconds=int(sec() - start))}\n')
 
 
 def get_arguments(from_argv):
-    # print(from_argv)
     parser = ar.ArgumentParser(description='Run SAFIR localised fire analysis automatically')
 
     parser.add_argument('-c', '--config', help='Path to configuration directory', required=True)
@@ -629,13 +634,13 @@ def get_arguments(from_argv):
                                               'cfd/fds)', default='locafi')
     parser.add_argument('-r', '--results', nargs='+', help='Paths to mechanical analysis IN files (one scenario ->'
                                                            'one IN file)', required=True)
-    parser.add_argument('-ch', '--check', help='Running checking functions before analyzing (boolean)', default=True)
+    parser.add_argument('-ch', '--check', help='Running checking functions before analyzing (boolean)', default=False,
+                        nargs='?', const=True)
     parser.add_argument('-v', '--verbose', default='trace', const='verbose', nargs='?',
                         help='Logging level ("trace" - reduced output [default], no argument or "verbose" - verbose'
                              'output, "warning" - warning level of logging)')
 
     argums = parser.parse_args(args=from_argv)
-    # parser.parse_args(['-h'])
 
     # change paths to absolute
     for k in argums.__dict__:
@@ -653,8 +658,6 @@ def get_arguments(from_argv):
 
 
 if __name__ == '__main__':
-    # first = argv[1]
-
     print('\n====== Welcome to iso2nf ======\n iso2nf.py is one of the components of fireeng-tools structural package.'
           '\n\nI am trying to run your case now. I will keep you updated on the progress. \n==================\n')
 
