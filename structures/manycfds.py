@@ -5,7 +5,8 @@ import sys
 import os
 import argparse as ar
 from file_read_backwards import FileReadBackwards as frb
-
+import matplotlib.pyplot as plt
+import numpy as np
 """Reviewed version of manycfds.py script by zarooba01"""
 
 """To be implemented:
@@ -85,7 +86,12 @@ def repair_cfdtxt(radffile):
     with open(radffile, 'w') as file:
         file.writelines(new_lines)
 
+"""
+class Beamtypes:
+    init  
 
+
+"""
 class ManyCfds:
     def __init__(self, config_dir, transfer_dir, mechanical_input_file, safir_exe_path):
         self.config_dir = config_dir
@@ -105,7 +111,8 @@ class ManyCfds:
         self.change_in_for_infiles()  # modify thermal attack in all 'cfd_*.IN' from FISO to CFD
         # iterate over transfer files and calculate elements within each domain
         for i, transfer_file in enumerate(os.listdir(self.transfer_dir)):
-                self.run_safir_for_all_thermal(i, self.operate_on_cfd(transfer_file))
+            self.show_plot()
+            self.run_safir_for_all_thermal(i, self.operate_on_cfd(transfer_file))
 
     def change_in(self, thermal_in_file):
         # new beam type is old + original beam types number + 1 (starts with 1 not 0)
@@ -209,8 +216,8 @@ class ManyCfds:
         
         repair_cfdtxt(actual_file)
         
-        domain = find_transfer_domain(actual_file)
-        
+        domain = TransferDomain(actual_file).domain        
+
         shutil.copyfile(actual_file, os.path.join(self.working_dir, 'cfd.txt'))
 
         inFileCopy = copy.deepcopy(self.inFile)
@@ -278,28 +285,79 @@ class ManyCfds:
             [os.rename(f'{file[:-3]}.{e}', f'{file[:-3]}_{iteration}.{e}') for e in ['XML', 'OUT']]
 
 
-def find_transfer_domain(transfer_file):
-    r = False
-    all_x, all_y, all_z = [], [], []
-    with open(transfer_file) as file:
-        for line in file:
-            if r:
-                try:
-                    x, y, z = line.split()
-                except ValueError:
-                    break
-                all_x.append(x)
-                all_y.append(y)
-                all_z.append(z)
-            if 'XYZ_INTENSITIES' in line:
-                r = True
-    all_x = [float(x) for x in all_x]
-    all_y = [float(x) for x in all_y]
-    all_z = [float(x) for x in all_z]
-    domain = [min(all_x), max(all_x), min(all_y), max(all_y), min(all_z), max(all_z)]
 
-    # transfer domain boundaries
-    return domain  # [XA, XB, YA, YB, ZA, ZB]
+
+class DomainPlot:
+    #domain   [0-XA, 1-XB, 2-YA, 3-YB, 4-ZA, 5-ZB]
+    """
+    self.d = TRransferDomain().domain
+    self.p1 = [d[0],d[2],d[4]]
+    self.p2 = [d[0],d[3],d[4]]
+    self.p3 = [d[0],d[2],d[5]]
+    self.p4 = [d[0],d[3],d[5]]
+    self.p5 = [d[1],d[2],d[4]]
+    self.p6 = [d[1],d[3],d[5]]
+    self.p7 = [d[1],d[2],d[4]]
+    self.p8 = [d[1],d[3],d[5]]
+
+    def show_plot(self):
+        
+        for node in self.inFile.nodes:
+            print(node)
+    
+
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='3d')
+
+        
+        xs = [1,2,3,4,5,6,7,8,9]
+        ys = [1,2,3,4,5,6,7,8,9]
+        zs = [1,2,3,4,5,6,7,8,9]
+
+        m ='o'
+        ax.scatter(xs, ys, zs, marker=m)
+        d = self.d
+
+        x, y, z = [d[0],d[1]], [d[2],d[3]], [d[4], d[5]]
+        ax.plot(x, y, z, color='black')
+
+
+        ax.set_xlabel('X Label')
+        ax.set_ylabel('Y Label')
+        ax.set_zlabel('Z Label')
+
+        plt.show()
+"""
+class TransferDomain:
+
+    def __init__(self, transfer_file):
+        self.transfer_file = transfer_file
+        self.domain = self.find_transfer_domain()
+
+    def find_transfer_domain(self):
+        r = False
+        all_x, all_y, all_z = [], [], []
+        with open(self.transfer_file) as file:
+            for line in file:
+                if r:
+                    try:
+                        x, y, z = line.split()
+                    except ValueError:
+                        break
+                    all_x.append(x)
+                    all_y.append(y)
+                    all_z.append(z)
+                if 'XYZ_INTENSITIES' in line:
+                    r = True
+        all_x = [float(x) for x in all_x]
+        all_y = [float(x) for x in all_y]
+        all_z = [float(x) for x in all_z]
+       
+        domain = [min(all_x), max(all_x), min(all_y), max(all_y), min(all_z), max(all_z)]
+        # transfer domain boundaries
+        return domain  # [XA, XB, YA, YB, ZA, ZB]
+
+
 
 def get_arguments():
     parser = ar.ArgumentParser(description='Run many cfds')
