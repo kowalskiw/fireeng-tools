@@ -87,8 +87,12 @@ def repair_cfdtxt(radffile):
         file.writelines(new_lines)
 
 """
-class Beamtypes:
-    init  
+ for beam in self.inFile.beamparameters['beamtypes']]
+    section = Section()
+
+class Section:
+    
+
 
 
 """
@@ -111,7 +115,7 @@ class ManyCfds:
         self.change_in_for_infiles()  # modify thermal attack in all 'cfd_*.IN' from FISO to CFD
         # iterate over transfer files and calculate elements within each domain
         for i, transfer_file in enumerate(os.listdir(self.transfer_dir)):
-            self.show_plot()
+            #self.show_plot()
             self.run_safir_for_all_thermal(i, self.operate_on_cfd(transfer_file))
 
     def change_in(self, thermal_in_file):
@@ -229,6 +233,7 @@ class ManyCfds:
         """
         ADDING ELEMENTS INSIDE DOMAIN
         """
+
         elements_inside_domain = []
         for element in inFileCopy.beams:
 
@@ -285,7 +290,8 @@ class ManyCfds:
             [os.rename(f'{file[:-3]}.{e}', f'{file[:-3]}_{iteration}.{e}') for e in ['XML', 'OUT']]
 
 
-
+class ElementsInsideDomain:
+    pass
 
 class DomainPlot:
     #domain   [0-XA, 1-XB, 2-YA, 3-YB, 4-ZA, 5-ZB]
