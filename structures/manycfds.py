@@ -106,11 +106,14 @@ class ManyCfds:
 
         self.inFile_backup = self.get_info_from_infile()
         self.inFile = self.get_info_from_infile()
+        self.beamline = self.inFile.beamparameters['beamline']
+        self.beamtypes = self.inFile.beamparameters['beamtypes']
         self.cfd_thermal_infiles = self.get_all_thermal_infiles()
 
     def main(self):
         self.add_rows()  # doubling beam types with cfd version of each section
         self.double_beam_num()  # doubling beam types number
+
         self.copy_files()  # copying sections with adding 'cfd_' prefix
         self.change_in_for_infiles()  # modify thermal attack in all 'cfd_*.IN' from FISO to CFD
         # iterate over transfer files and calculate elements within each domain
@@ -120,8 +123,8 @@ class ManyCfds:
 
     def change_in(self, thermal_in_file):
         # new beam type is old + original beam types number + 1 (starts with 1 not 0)
-        newbeamtype = 1 + self.inFile.beamparameters['beamtypes'].index(os.path.basename(thermal_in_file)[4:-3]) + \
-                      len(self.inFile.beamparameters['beamtypes'])
+        newbeamtype = 1 + self.beamtypes.index(os.path.basename(thermal_in_file)[4:-3]) + \
+                      len(self.beamtypes)
         # open thermal analysis input file
         with open(thermal_in_file) as file:
             init = file.readlines()
@@ -192,15 +195,15 @@ class ManyCfds:
         self.inFile.file_lines.insert(end, ''.join(data_add))
 
     def double_beam_num(self):
-        line_params = self.inFile.file_lines[self.inFile.beamparameters['beamline']].split()
+        line_params = self.inFile.file_lines[self.beamline].split()
         line_param_num = line_params[2]
         doubled_param = str(int(line_param_num) * 2)
         newbemline = ' '.join((line_params[0], line_params[1], doubled_param, '\n'))
-        self.inFile.file_lines[self.inFile.beamparameters['beamline']] = newbemline
+        self.inFile.file_lines[self.beamline] = newbemline
 
     def copy_files(self):
         """ NAME CHANGE AND COPYING FILES"""
-        for beam in self.inFile.beamparameters['beamtypes']:
+        for beam in self.beamtypes:
             try:
                 shutil.copyfile(os.path.join(self.config_dir, f'{beam}.IN'),
                                 os.path.join(self.working_dir, f'cfd_{beam}.IN'))
@@ -209,7 +212,7 @@ class ManyCfds:
                 sys.exit(1)
 
     def get_all_thermal_infiles(self):
-        return ['cfd_' + beam + '.in' for beam in self.inFile.beamparameters['beamtypes']]
+        return ['cfd_' + beam + '.in' for beam in self.beamtypes]
 
     def change_in_for_infiles(self):
         for thermal_infile in self.cfd_thermal_infiles:
@@ -293,47 +296,7 @@ class ManyCfds:
 class ElementsInsideDomain:
     pass
 
-class DomainPlot:
-    #domain   [0-XA, 1-XB, 2-YA, 3-YB, 4-ZA, 5-ZB]
-    """
-    self.d = TRransferDomain().domain
-    self.p1 = [d[0],d[2],d[4]]
-    self.p2 = [d[0],d[3],d[4]]
-    self.p3 = [d[0],d[2],d[5]]
-    self.p4 = [d[0],d[3],d[5]]
-    self.p5 = [d[1],d[2],d[4]]
-    self.p6 = [d[1],d[3],d[5]]
-    self.p7 = [d[1],d[2],d[4]]
-    self.p8 = [d[1],d[3],d[5]]
 
-    def show_plot(self):
-        
-        for node in self.inFile.nodes:
-            print(node)
-    
-
-        fig = plt.figure()
-        ax = fig.add_subplot(projection='3d')
-
-        
-        xs = [1,2,3,4,5,6,7,8,9]
-        ys = [1,2,3,4,5,6,7,8,9]
-        zs = [1,2,3,4,5,6,7,8,9]
-
-        m ='o'
-        ax.scatter(xs, ys, zs, marker=m)
-        d = self.d
-
-        x, y, z = [d[0],d[1]], [d[2],d[3]], [d[4], d[5]]
-        ax.plot(x, y, z, color='black')
-
-
-        ax.set_xlabel('X Label')
-        ax.set_ylabel('Y Label')
-        ax.set_zlabel('Z Label')
-
-        plt.show()
-"""
 class TransferDomain:
 
     def __init__(self, transfer_file):

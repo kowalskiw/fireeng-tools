@@ -241,26 +241,32 @@ class InFile:
                 return float(self.file_lines[-i-2].split()[1])
 
     def get_beamparameters(self):
+        """ beamparameters mostly say in which line specific data appears.
+                IMPORTANT! table of data starts from 0 -> lines in notepad will be greater by 1
+        """
         beamparameters = {}
+
+        beamparameters['BEAM'] = [x for x in range(len(self.file_lines)) if 'BEAM' in self.file_lines[x]][0]  #where beam line appears (begining of the file)
+
+        for x in range(len(self.file_lines)):
+            if 'NODOFBEAM' in self.file_lines[x]:
+                beamparameters['NODOFBEAM'] = x
+            if 'END_TRANS' in self.file_lines[x]:
+                beamparameters['END_TRANS_LAST'] = x
+
+        beamparameters['elem_start'] = 0
+        beamparameters['beamtypes'] = []
         lines = 0
-        
-        beamparameters['index'] = [x for x in range(len(self.file_lines)) if 'NODOFBEAM' in self.file_lines[x]][0] #where NODOFBEAM appears - beamparameters in inFile.file_lines starts
-        beamparameters['beamtypes']= []
-        
-
-        beamparameters['beamline'] = [x for x in range(len(self.file_lines)) if 'BEAM' in self.file_lines[x]][0]  #where beam line appears (begining of the file)
-        beamparameters['elemstart']= 0
-
-        for line in self.file_lines[beamparameters['index']+1:]:#how many lines till ELEM appears- beams ends (every beam has 3 lines)
+        for line in self.file_lines[beamparameters['NODOFBEAM']:]: #how many lines till ELEM appears- beams ends (every beam has 3 lines)
             if "ELEM" not in line:
                 if line.endswith(".tem\n"):
                     beamparameters['beamtypes'].append(line[:-5]) 
                 if line.endswith(".tem"):
-                    beamparameters['beamtypes'].append(line[:-4]) # question? - are here possibilities to have line ending without \n ?   
+                    beamparameters['beamtypes'].append(line[:-4])
                 lines+=1
             else:
-                beamparameters['elemstart'] = beamparameters['index']+2+lines
-
+                beamparameters['elem_start'] = beamparameters['NODOFBEAM']+lines # ELEM starts
+                break
         beamparameters['beamnumber'] = len(beamparameters['beamtypes'])
         return beamparameters
 
