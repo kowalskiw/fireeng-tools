@@ -17,28 +17,34 @@ class ManyCfds:
 
         self.beamtypes = []
         self.transfer_files = []
+        self.all_thermal_infiles = []
 
     def main(self):
-
-
-
         #mechinfile = MechInFile("D:\\ConsultRisk\\testowe\\test_05_03\\manycfds\\my_sim\\beam.in")
-        mechinfile = MechInFile("D:\\ConsultRisk\\testowe\\test_05_03\\manycfds\\my_sim\\beam.in")
+        mechinfile = MechInFile(self.mechanical_input_file)
         self.beamtypes = mechinfile.beamparameters['beamtypes']
-
         self.copy_files()  # copying sections with adding 'cfd_' prefix
 
+
     def copy_files(self):
-        """ NAME CHANGE AND COPYING FILES"""
+        """ NAME CHANGE AND COPYING FILES + adding thermal infiles to the list self.all_thermal_infiles"""
         for beam in self.beamtypes:
             try:
+                infile = f'cfd_{beam}.IN'
                 shutil.copyfile(os.path.join(self.config_dir, f'{beam}.IN'),
                                 os.path.join(self.working_dir, f'cfd_{beam}.IN'))
+                self.all_thermal_infiles.append(infile)
             except FileNotFoundError as e:
                 print(e)
                 sys.exit(1)
 
-    def get_all_transfer_files(self):
+    def run_safir_for_all_thermal(self, iteration, queue):
+        for file_in in queue:
+            file = os.path.join(self.working_dir, file_in)
+            safir_tools.run_safir(file, self.safir_exe_path, fix_rlx=False)
+            [os.rename(f'{file[:-3]}.{e}', f'{file[:-3]}_{iteration}.{e}') for e in ['XML', 'OUT']]
+
+    #def get_all_transfer_files(self):
 
 
 class MechInFile(safir_tools.InFile):
@@ -80,6 +86,14 @@ class Section:
     def __init__(self, transfer_file):
         self.transfer_file = transfer_file
         self.domain = self.find_transfer_domain()
+
+
+    def main(self):
+        self.repair_cfdtxt()
+
+
+    def copy_to_working_dir(self):
+        shutil.copyfile(self, self.transfer_file, os.path.join(self.working_dir, 'cfd.txt'))
 
     def repair_cfdtxt(self):
         ch_nsteps = False
@@ -145,7 +159,6 @@ class Section:
         # overwrite invalid file
         with open(self.transfer_file, 'w') as file:
             file.writelines(new_lines)
-
 
     def find_transfer_domain(self):
         r = False
