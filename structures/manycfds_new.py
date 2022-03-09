@@ -24,7 +24,7 @@ class ManyCfds:
         mechinfile = MechInFile(self.mechanical_input_file)
         self.beamtypes = mechinfile.beamparameters['beamtypes']
         self.copy_files()  # copying sections with adding 'cfd_' prefix
-
+        self.run_safir_for_all_thermal() #change name
 
     def copy_files(self):
         """ NAME CHANGE AND COPYING FILES + adding thermal infiles to the list self.all_thermal_infiles"""
@@ -77,23 +77,54 @@ class MechInFile(safir_tools.InFile):
         newbemline = ' \t '.join(("    ", line_params[0], line_params[1], doubled_param, '\n'))
         self.file_lines[self.beamline] = newbemline
 
-    def save_file(self, lines):
+    def save_file(self, lines): #only for testing
         with open("newtest.in", "w") as file:
             file.writelines(lines)
 
 
 class Section:
-    def __init__(self, transfer_file):
+    def __init__(self, transfer_file, inFile):
         self.transfer_file = transfer_file
         self.domain = self.find_transfer_domain()
-
+        self.elements_inside_domain = self.find_elements_inside_domain()
+        self.inFile = inFile
 
     def main(self):
         self.repair_cfdtxt()
+        self.copy_to_working_dir()
+        self.find_elements_inside_domain()
+        self.change_endline_beam_id()
+        self.save_as_dummy()
 
+        inFileCopy = copy.deepcopy(self.inFile)
+        """ what's the point of having theese?"""
+        beamparams = inFileCopy.beamparameters
+        file_lines = inFileCopy.file_lines
 
-    def copy_to_working_dir(self):
-        shutil.copyfile(self, self.transfer_file, os.path.join(self.working_dir, 'cfd.txt'))
+        btypes_in_domain = []
+
+    def find_transfer_domain(self):
+        r = False
+        all_x, all_y, all_z = [], [], []
+        with open(self.transfer_file) as file:
+            for line in file:
+                if r:
+                    try:
+                        x, y, z = line.split()
+                    except ValueError:
+                        break
+                    all_x.append(x)
+                    all_y.append(y)
+                    all_z.append(z)
+                if 'XYZ_INTENSITIES' in line:
+                    r = True
+        all_x = [float(x) for x in all_x]
+        all_y = [float(x) for x in all_y]
+        all_z = [float(x) for x in all_z]
+
+        domain = [min(all_x), max(all_x), min(all_y), max(all_y), min(all_z), max(all_z)]
+        # transfer domain boundaries
+        return domain  # [XA, XB, YA, YB, ZA, ZB]
 
     def repair_cfdtxt(self):
         ch_nsteps = False
@@ -160,28 +191,59 @@ class Section:
         with open(self.transfer_file, 'w') as file:
             file.writelines(new_lines)
 
-    def find_transfer_domain(self):
-        r = False
-        all_x, all_y, all_z = [], [], []
-        with open(self.transfer_file) as file:
-            for line in file:
-                if r:
-                    try:
-                        x, y, z = line.split()
-                    except ValueError:
-                        break
-                    all_x.append(x)
-                    all_y.append(y)
-                    all_z.append(z)
-                if 'XYZ_INTENSITIES' in line:
-                    r = True
-        all_x = [float(x) for x in all_x]
-        all_y = [float(x) for x in all_y]
-        all_z = [float(x) for x in all_z]
+    def copy_to_working_dir(self):
+        shutil.copyfile(self, self.transfer_file, os.path.join(self.working_dir, 'cfd.txt'))
 
-        domain = [min(all_x), max(all_x), min(all_y), max(all_y), min(all_z), max(all_z)]
-        # transfer domain boundaries
-        return domain  # [XA, XB, YA, YB, ZA, ZB]
+    def find_elements_inside_domain(self):
+        elements_inside_domain = []
+        for element in inFileCopy.beams:
+
+            first_node_id = element[1]
+            last_node_id = element[3]
+            first_node_coor = inFileCopy.nodes[first_node_id - 1][1:]
+            last_node_coor = inFileCopy.nodes[last_node_id - 1][1:]
+
+            # enable elements to be partially within domain (only start or end point is enough)
+            if ((self.domain[1] > first_node_coor[0] > self.domain[0] or self.domain[1] > last_node_coor[0] > self.domain[0])
+                    and (self.domain[3] > first_node_coor[1] > self.domain[2] or self.domain[3] > last_node_coor[1] > self.domain[2])
+                    and (self.domain[5] > first_node_coor[2] > self.domain[4] or self.domain[5] > last_node_coor[2] > self.domain[4])):
+                elements_inside_domain.append(element[0])
+
+        print(f'[INFO] There are {len(elements_inside_domain)} BEAM elements located in the {self.domain} domain:')
+
+        if len(elements_inside_domain) == 0:
+            return False
+        else:
+            print(f'{elements_inside_domain}')
+        return elements_inside_domain
+
+    def change_endline_beam_id(self):
+        lines = 0
+        for line in file_lines[beamparams['elemstart']:]:
+            elem_data = line.split()
+            if 'ELEM' not in line or 'RELAX' in line:
+                break
+            if int(elem_data[1]) in elements_inside_domain:
+                actual_line = beamparams['elemstart'] + lines
+                new_beam_number = int(elem_data[-1]) + beamparams['beamnumber']
+
+                # add the beam type to be calculated
+                try:
+                    btypes_in_domain.index(int(elem_data[-1]) - 1)
+                except ValueError:
+                    btypes_in_domain.append(int(elem_data[-1]) - 1)
+
+                file_lines[actual_line] = f'  \t{"    ".join(elem_data[:-1])}\t{new_beam_number}\n'
+            lines += 1
+
+    def save_as_dummy(self):
+        with open(os.path.join(self.working_dir, 'dummy.in'), 'w') as f:
+            for line in file_lines:
+                f.write(line)
+
+
+
+
 
 
 
