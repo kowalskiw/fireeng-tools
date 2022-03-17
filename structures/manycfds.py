@@ -5,6 +5,7 @@ import sys
 import os
 import argparse as ar
 from file_read_backwards import FileReadBackwards as frb
+from decimal import Decimal as dec
 
 """Reviewed version of manycfds.py script by zarooba01"""
 
@@ -80,7 +81,7 @@ def repair_cfdtxt(radffile):
                 ch_nsteps = True
 
             new_lines.append(line)
-    
+
     # overwrite invalid file
     with open(radffile, 'w') as file:
         file.writelines(new_lines)
@@ -105,7 +106,7 @@ class ManyCfds:
         self.change_in_for_infiles()  # modify thermal attack in all 'cfd_*.IN' from FISO to CFD
         # iterate over transfer files and calculate elements within each domain
         for i, transfer_file in enumerate(os.listdir(self.transfer_dir)):
-                self.run_safir_for_all_thermal(i, self.operate_on_cfd(transfer_file))
+            self.run_safir_for_all_thermal(i, self.operate_on_cfd(transfer_file))
 
     def change_in(self, thermal_in_file):
         # new beam type is old + original beam types number + 1 (starts with 1 not 0)
@@ -206,11 +207,11 @@ class ManyCfds:
 
     def operate_on_cfd(self, transfer_file):
         actual_file = os.path.join(self.transfer_dir, transfer_file)
-        
+
         repair_cfdtxt(actual_file)
-        
+
         domain = find_transfer_domain(actual_file)
-        
+
         shutil.copyfile(actual_file, os.path.join(self.working_dir, 'cfd.txt'))
 
         inFileCopy = copy.deepcopy(self.inFile)
@@ -239,7 +240,7 @@ class ManyCfds:
         print(f'[INFO] There are {len(elements_inside_domain)} BEAM elements located in the {domain} domain:')
 
         if len(elements_inside_domain) == 0:
-            return []   # empty list - no thermal analysis will be run
+            return []  # empty list - no thermal analysis will be run
         else:
             print(f'{elements_inside_domain}')
 
@@ -279,24 +280,31 @@ class ManyCfds:
 
 
 def find_transfer_domain(transfer_file):
+    def size(data):
+        data.sort()
+        return abs(data[1] - data[0])
+
+    def minmax(values: list, cell_size: float = 0):
+        return float(min(values) + cell_size / 1), float(max(values) + cell_size / 2)
+
     r = False
-    all_x, all_y, all_z = [], [], []
+    axes = [[], [], []]
+    domain = []
+
     with open(transfer_file) as file:
         for line in file:
+            spltd = line.split()
             if r:
-                try:
-                    x, y, z = line.split()
-                except ValueError:
+                if len(spltd) != 3:
                     break
-                all_x.append(x)
-                all_y.append(y)
-                all_z.append(z)
-            if 'XYZ_INTENSITIES' in line:
+                [axes[i].append(v) if v not in axes[i] else None for i, v in enumerate(spltd)]
+            elif 'XYZ_INTENSITIES' in line:
                 r = True
-    all_x = [float(x) for x in all_x]
-    all_y = [float(x) for x in all_y]
-    all_z = [float(x) for x in all_z]
-    domain = [min(all_x), max(all_x), min(all_y), max(all_y), min(all_z), max(all_z)]
+
+    axes = [[dec(axis[i]) for i in range(len(axis))] for axis in axes]
+    cellsizes = [size(axis) for axis in axes]
+
+    [[domain.append(j) for j in minmax(axes[i], cell_size=cellsizes[i])] for i in range(3)]
 
     # transfer domain boundaries
     return domain  # [XA, XB, YA, YB, ZA, ZB]
@@ -309,7 +317,7 @@ def get_arguments():
     parser.add_argument('-m', '--mechanical_input_file', help='Mechanical input file', required=True)
     parser.add_argument('-s', '--safir_exe_path', help='Path to SAFIR executable', default='/safir.exe')
     args = parser.parse_args()
-   
+
     return args
 
 
