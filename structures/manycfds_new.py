@@ -21,10 +21,13 @@ class ManyCfds:
 
     def main(self):
         #mechinfile = MechInFile("D:\\ConsultRisk\\testowe\\test_05_03\\manycfds\\my_sim\\beam.in")
-        mechinfile = MechInFile(self.mechanical_input_file)
-        self.beamtypes = mechinfile.beamparameters['beamtypes']
+        self.mechinfile = MechInFile(self.mechanical_input_file)
+        self.beamtypes = self.mechinfile.beamparameters['beamtypes']
         self.copy_files()  # copying sections with adding 'cfd_' prefix
-        self.run_safir_for_all_thermal() #change name
+        self.get_all_transfer_files()
+        self.run_section()
+
+        print("koniec")
 
     def copy_files(self):
         """ NAME CHANGE AND COPYING FILES + adding thermal infiles to the list self.all_thermal_infiles"""
@@ -38,13 +41,18 @@ class ManyCfds:
                 print(e)
                 sys.exit(1)
 
-    def run_safir_for_all_thermal(self, iteration, queue):
-        for file_in in queue:
-            file = os.path.join(self.working_dir, file_in)
-            safir_tools.run_safir(file, self.safir_exe_path, fix_rlx=False)
-            [os.rename(f'{file[:-3]}.{e}', f'{file[:-3]}_{iteration}.{e}') for e in ['XML', 'OUT']]
 
-    #def get_all_transfer_files(self):
+    def get_all_transfer_files(self):
+        for filename in os.listdir(self.transfer_dir):
+            transfer_file = os.path.join(self.transfer_dir, filename)
+            self.transfer_files.append(transfer_file)
+
+
+    def run_section(self):
+        for transfer_file in self.transfer_files:
+           Section(transfer_file,  self.mechinfile, self.working_dir, self.all_thermal_infiles)
+
+
 
 
 class MechInFile(safir_tools.InFile):
@@ -83,48 +91,30 @@ class MechInFile(safir_tools.InFile):
 
 
 class Section:
-    def __init__(self, transfer_file, inFile):
+    def __init__(self, transfer_file, inFile, working_dir, thermal_files):
         self.transfer_file = transfer_file
-        self.domain = self.find_transfer_domain()
-        self.elements_inside_domain = self.find_elements_inside_domain()
+        self.domain = TransferDomain(self.transfer_file).find_transfer_domain()
         self.inFile = inFile
+        self.inFileCopy = copy.deepcopy(self.inFile)
+        self.btypes_in_domain = []
+        self.file_lines = self.inFileCopy.file_lines
+        self.beamparams = self.inFileCopy.beamparameters
+        self.working_dir = working_dir
+        self.thermal_files = thermal_files
 
     def main(self):
         self.repair_cfdtxt()
         self.copy_to_working_dir()
-        self.find_elements_inside_domain()
+        self.elements_inside_domain = self.find_elements_inside_domain(self.inFileCopy)
         self.change_endline_beam_id()
         self.save_as_dummy()
 
         inFileCopy = copy.deepcopy(self.inFile)
-        """ what's the point of having theese?"""
+        """ what's the point of having theese?
         beamparams = inFileCopy.beamparameters
         file_lines = inFileCopy.file_lines
-
         btypes_in_domain = []
-
-    def find_transfer_domain(self):
-        r = False
-        all_x, all_y, all_z = [], [], []
-        with open(self.transfer_file) as file:
-            for line in file:
-                if r:
-                    try:
-                        x, y, z = line.split()
-                    except ValueError:
-                        break
-                    all_x.append(x)
-                    all_y.append(y)
-                    all_z.append(z)
-                if 'XYZ_INTENSITIES' in line:
-                    r = True
-        all_x = [float(x) for x in all_x]
-        all_y = [float(x) for x in all_y]
-        all_z = [float(x) for x in all_z]
-
-        domain = [min(all_x), max(all_x), min(all_y), max(all_y), min(all_z), max(all_z)]
-        # transfer domain boundaries
-        return domain  # [XA, XB, YA, YB, ZA, ZB]
+        """
 
     def repair_cfdtxt(self):
         ch_nsteps = False
@@ -194,7 +184,7 @@ class Section:
     def copy_to_working_dir(self):
         shutil.copyfile(self, self.transfer_file, os.path.join(self.working_dir, 'cfd.txt'))
 
-    def find_elements_inside_domain(self):
+    def find_elements_inside_domain(self, inFileCopy):
         elements_inside_domain = []
         for element in inFileCopy.beams:
 
@@ -218,32 +208,65 @@ class Section:
         return elements_inside_domain
 
     def change_endline_beam_id(self):
+
         lines = 0
-        for line in file_lines[beamparams['elemstart']:]:
+        for line in self.file_lines[self.beamparams['elemstart']:]:
             elem_data = line.split()
             if 'ELEM' not in line or 'RELAX' in line:
                 break
-            if int(elem_data[1]) in elements_inside_domain:
-                actual_line = beamparams['elemstart'] + lines
-                new_beam_number = int(elem_data[-1]) + beamparams['beamnumber']
+            if int(elem_data[1]) in self.elements_inside_domain:
+                actual_line = self.beamparams['elemstart'] + lines
+                new_beam_number = int(elem_data[-1]) + self.beamparams['beamnumber']
 
                 # add the beam type to be calculated
                 try:
-                    btypes_in_domain.index(int(elem_data[-1]) - 1)
+                    self.btypes_in_domain.index(int(elem_data[-1]) - 1)
                 except ValueError:
-                    btypes_in_domain.append(int(elem_data[-1]) - 1)
+                    self.btypes_in_domain.append(int(elem_data[-1]) - 1)
 
-                file_lines[actual_line] = f'  \t{"    ".join(elem_data[:-1])}\t{new_beam_number}\n'
+                self.file_lines[actual_line] = f'  \t{"    ".join(elem_data[:-1])}\t{new_beam_number}\n'
             lines += 1
 
     def save_as_dummy(self):
         with open(os.path.join(self.working_dir, 'dummy.in'), 'w') as f:
-            for line in file_lines:
+            for line in self.file_lines:
                 f.write(line)
 
+    def run_safir_for_all_thermal(self):
+        for thermal_file in self.thermal_files:
+            file = os.path.join(self.working_dir, thermal_file)
+            safir_tools.run_safir(file, self.safir_exe_path, fix_rlx=False)
+            #[os.rename(f'{file[:-3]}.{e}', f'{file[:-3]}_{iteration}.{e}') for e in ['XML', 'OUT']]
 
 
+class TransferDomain:
 
+    def __init__(self, transfer_file):
+        self.transfer_file = transfer_file
+        self.domain = self.find_transfer_domain()
+
+    def find_transfer_domain(self):
+        r = False
+        all_x, all_y, all_z = [], [], []
+        with open(self.transfer_file) as file:
+            for line in file:
+                if r:
+                    try:
+                        x, y, z = line.split()
+                    except ValueError:
+                        break
+                    all_x.append(x)
+                    all_y.append(y)
+                    all_z.append(z)
+                if 'XYZ_INTENSITIES' in line:
+                    r = True
+        all_x = [float(x) for x in all_x]
+        all_y = [float(x) for x in all_y]
+        all_z = [float(x) for x in all_z]
+
+        domain = [min(all_x), max(all_x), min(all_y), max(all_y), min(all_z), max(all_z)]
+        # transfer domain boundaries
+        return domain  # [XA, XB, YA, YB, ZA, ZB]
 
 
 
