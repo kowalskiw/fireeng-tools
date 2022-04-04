@@ -602,6 +602,8 @@ def run_user_mode(sim_no, arguments):
         ManyCfds(m.sim_dir, f'{arguments.config}/transfer_files/', m.input_file, arguments.safir).main()
 
         print(f'Runtime of CFD-heating thermal analysis: {dt(seconds=int(sec() - start))}\n')
+        for t in m.thermals:
+            t.insert_tor()
 
     else:
         # check the set up

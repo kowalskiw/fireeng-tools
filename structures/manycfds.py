@@ -106,6 +106,7 @@ class ManyCfds:
         self.change_in_for_infiles()  # modify thermal attack in all 'cfd_*.IN' from FISO to CFD
         # iterate over transfer files and calculate elements within each domain
         for i, transfer_file in enumerate(os.listdir(self.transfer_dir)):
+            print(f'\n>>>>> {transfer_file} <<<<<')
             self.run_safir_for_all_thermal(i, self.operate_on_cfd(transfer_file))
 
     def change_in(self, thermal_in_file):
@@ -174,7 +175,7 @@ class ManyCfds:
             Doubling rows in beamparameters in inFile.file_lines and adding 'cfd_' before beam name
         """
         start = self.inFile.beamparameters['index'] + 1  # the line where beamparameters starts in inFile.file_lines
-        end = self.inFile.file_lines.index('END_TRANS\n')  # start + self.inFile.beamparameters['beamnumber'] * 3
+        end = len(self.inFile.file_lines) - list(reversed(self.inFile.file_lines)).index('END_TRANS\n')  # start + self.inFile.beamparameters['beamnumber'] * 3
         data_add = self.inFile.file_lines[start:end]
         for num in range(len(data_add)):
             if data_add[num].endswith('.tem\n'):
@@ -211,6 +212,8 @@ class ManyCfds:
         repair_cfdtxt(actual_file)
 
         domain = find_transfer_domain(actual_file)
+        if not domain:
+            return []    # return empty list (no thermal analysis) if domain is flat
 
         shutil.copyfile(actual_file, os.path.join(self.working_dir, 'cfd.txt'))
 
@@ -276,7 +279,12 @@ class ManyCfds:
         for file_in in queue:
             file = os.path.join(self.working_dir, file_in)
             safir_tools.run_safir(file, self.safir_exe_path, fix_rlx=False)
-            [os.rename(f'{file[:-3]}.{e}', f'{file[:-3]}_{iteration}.{e}') for e in ['XML', 'OUT']]
+            while True:
+                try:
+                    [os.rename(f'{file[:-3]}.{e}', f'{file[:-3]}_{iteration}.{e}') for e in ['XML', 'OUT']]
+                    break
+                except FileExistsError:
+                    iteration = str(iteration) + 'a'
 
 
 def find_transfer_domain(transfer_file):
@@ -285,7 +293,7 @@ def find_transfer_domain(transfer_file):
         return abs(data[1] - data[0])
 
     def minmax(values: list, cell_size: float = 0):
-        return float(min(values) + cell_size / 1), float(max(values) + cell_size / 2)
+        return float(min(values) - cell_size / 2), float(max(values) + cell_size / 2)
 
     r = False
     axes = [[], [], []]
@@ -299,10 +307,14 @@ def find_transfer_domain(transfer_file):
                     break
                 [axes[i].append(v) if v not in axes[i] else None for i, v in enumerate(spltd)]
             elif 'XYZ_INTENSITIES' in line:
-                r = True
+                r = True    
 
     axes = [[dec(axis[i]) for i in range(len(axis))] for axis in axes]
-    cellsizes = [size(axis) for axis in axes]
+    try:
+        cellsizes = [size(axis) for axis in axes]
+    except IndexError:
+        return []    # return empty list if transfer domain is flat
+
 
     [[domain.append(j) for j in minmax(axes[i], cell_size=cellsizes[i])] for i in range(3)]
 
