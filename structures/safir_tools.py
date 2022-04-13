@@ -265,6 +265,206 @@ class InFile:
         return beamparameters
 
 
+# ================ new API-like part for SAFIR input files ===============
+
+class Entity:
+    def __init__(self):
+        self.tag = int
+        self.value = []
+        self.dim = int
+        self.prop = str if self.dim > 0 else None
+
+        #                           node (dim=0)   |  beam (dim=1)    | shell (dim=2)
+        self.load = []  # [Px, Py, Pz, Mx, My, Mz] | [qx, qy, qz]     | [qarea]
+        self.mass = []  # [m1, m2, m3, m4, m5, m6] | [m, rot_inertia] | [mass]
+
+        self.fix = []   # [1 for fixation, 0 for not fixed]
+
+        self.relax = []     # [relxation parameters]
+
+    
+class Entities:
+    def __init__(self):
+        self.dim = int
+        self.entities = []  # list of Entity objects
+        self.taglist = self.dotaglist()
+        self.numlist = self.taglist.values()
+
+        # properties
+        self.proprties = Propeties(self.dim)
+
+
+    # return dictionary of entities with tags as keys
+    def dotagdict(self):
+        tag_dict = {}
+        for e in self.entities:
+            tag_dict[str(e.tag)] = e.value
+
+        return tag_dict
+
+
+class Nodes(Entities):
+    def __init__(self):
+        super().__init__(self)
+        self.dim = 0
+
+
+class Beams(Entities):
+    def __init__(self):
+        super().__init__(self)
+        self.dim = 1
+        self.profiletag = int 
+        # self.relax = {}     # {'tag': [relaxation parameters (float)], ... }
+
+
+class Shells(Entities)
+    def __init__(self):
+        super().__init__(self)
+        self.dim = 2
+        self.vert = 4      # number of vertices (quad elements are default)
+        self.tshtag = int
+
+        # conditions
+        self.frontiers = [None, None, None, None]     # [FUNC1, FUNC2, FUNC3, FUNC4]
+        self.flux = [None, None, None, None]     # [FUNC1, FUNC2, FUNC3, FUNC4]
+        self.temp = [None, None, None, None]     # [FUNC1, FUNC2, FUNC3, FUNC4]
+        self.void = [None, None, None, None]     # [FUNC1, FUNC2, FUNC3, FUNC4]
+        
+
+class Solids(Entities)
+    def __init__(self):
+        super().__init__(self)
+        self.dim = 2
+        self.vert = 8      # number of vertices (hexahedral elements are default)
+        
+        # there should be some temperature constraints also
+
+
+class Geometry:
+    def __init__(self, n=None: Nodes, b=None: Beams, sh=None: Shells,
+                 sd=None: Solids):
+        self.nodes = n
+        self.beams = b
+        self.shells = sh
+        self.solids = sd
+
+        self.profiles = {} # list of profiles {'b': {'profile': [globalmat1, globalmat2 ... ] ... }, 'sh': {...}}
+
+    def read(self, file_lines, dim=None: list):
+        # read entities form file lines
+        # possible to read only chosen dimensions
+        pass
+    
+    def write(self, file_lines=None, mode=None, dim=None: list):
+        # return geometry lines entities form file lines
+        # possible to write only chosen dimensions
+        # possible to write (append or replace) geometry in filelines
+        pass
+
+# 
+# class Thermal2D(Properties):
+#     def __init__(self):
+#         super().__init__(self)
+#         self.frontiers = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+#         self.flux = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+#         self.temp = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+# 
+#         
+# 
+# class Thermal3D(Properties):
+#     def __init__(self):
+#         super().__init__(self)
+#         self.frontiers = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+#         self.flux = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+#         self.temp = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+# 
+# 
+# class ThermalTSH(Properties):
+#     def __init__(self):
+#         super().__init__(self)
+#         self.frontiers = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+#         self.flux = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+#         self.temp = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+# 
+# # # class Structural2D(Properites): #     def __init__(self):
+#         super().__init__(self)
+#         self.loads = {}
+#         self.masses = {}
+# 
+# 
+# class Structural3D(Properites):
+#     def __init__(self):
+#         super().__init__(self)
+#         pass
+# 
+
+# to be developed in the future: one material in SAFIR = one class
+class Material:
+    def __init__(self):
+        self.name = str
+        self.parameters = []    # list of parameters required by SAFIR for the Material
+
+
+class NewInFile:
+    def __init__(self, problemtype: str, chid=None, path=None):
+        # file data
+        self.chid = chid if chid else None
+        self.path = path if path else None
+        self.lines = []
+        
+        self.pt = problemtype
+
+        # geometry
+        self.geom = Geometry()
+
+        # simulation
+        self.nfiber = 440   # default GiD number
+        self.time_end = 1800    # default
+        self.algorithm = 1      # 1 for PARDISO, 0 for CHOLESKY
+        self.cores = 1  # valid only if self.algorithm == 1
+        self.description = 'SAFIR simulaion produced with safir_tools.py\nvisit 
+                            github.com\kowalskiw\\fireeng-tools for more details'
+        self.materials = [] # list of Material objects
+
+
+
+        
+    def read_lines(self, path):
+        with open(path) as f:
+            self.lines = f.readlines()
+        
+        self.path = path
+        self.chid = '.'.join(os.basename(path).split('.')[:-1])
+
+    def read_sim(self, path=None):
+        p = self.path if not path else path
+        read_lines(p)
+        read_data()
+
+    def read_data(self):
+        pass
+    
+    # save lines to path
+    def write_lines(self, path, update=True):
+        self.update_lines() if update else None
+        with open(path, 'w') as f:
+            f.writelines(self.lines)
+        
+
+    # replace lines with current data
+    def update_lines(self):
+        pass
+
+
+class Thermal2d(NewInFile):
+    def __init__(self):
+        super().__init__(self, 'Thermal2D')
+
+
+
+
+    
+
 # if you want to run a function from this file, add the function name as the first parameter
 # the rest of the parameters will be forwarded to the called function (files as a full path)
 if __name__ == '__main__':
