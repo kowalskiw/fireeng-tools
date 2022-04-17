@@ -13,7 +13,7 @@ import numpy as np
     1) GiD directory tree;
     2) check for integrity of thermal results: if all BEAM elements were calculated NG times (2 as a default)
     3) another object named BeamType or Section - use it to operate on thermal input files and to store its attributes
-    (paths, original and newbeamtype etc.) and methods (like change_in() or run())
+    (paths, original and newbeamtype etc.) and methods (like change_in() or run())  <-DONE
     4) finding elements within domain with their exact (according to the integration point) locations
      DONE -> 5) taking arguments with flags in console mode (-c/---config, -t/--transfer etc.) <- DONE
     
@@ -325,6 +325,9 @@ class TransferDomain:
         domain = [min(all_x), max(all_x), min(all_y), max(all_y), min(all_z), max(all_z)]
         # transfer domain boundaries
         return domain  # [XA, XB, YA, YB, ZA, ZB]
+
+
+
 
 
 
