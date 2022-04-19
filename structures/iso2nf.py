@@ -177,7 +177,7 @@ class ThermalTEM:
                 elif self.model in {'hsm', 'hasemi'}:
                     thermal_attack = 'HASEMI'
                 elif self.model in {'iso', 'fiso', 'standard'}:
-                    break
+                    thermal_attack = 'FISO'
 
                 if thermal_attack == 'F20':
                     init[no] = 'F20'.join(line.split('FISO'))

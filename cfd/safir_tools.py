@@ -1,4 +1,3 @@
-import os.path
 import subprocess
 import sys
 from os import getcwd, chdir
@@ -242,52 +241,28 @@ class InFile:
                 return float(self.file_lines[-i-2].split()[1])
 
     def get_beamparameters(self):
-        """ beamparameters mostly say in which line specific data appears.
-                IMPORTANT! table of data starts from 0 -> lines in notepad will be greater by 1
-        """
         beamparameters = {}
-
-        beamparameters['BEAM'] = [x for x in range(len(self.file_lines)) if 'BEAM' in self.file_lines[x]][0]  #where beam line appears (begining of the file)
-
-        for x in range(len(self.file_lines)):
-            if 'NODOFBEAM' in self.file_lines[x]:
-                beamparameters['NODOFBEAM'] = x
-            if 'END_TRANS' in self.file_lines[x]:
-                beamparameters['END_TRANS_LAST'] = x
-
-        beamparameters['elem_start'] = 0
-        beamparameters['beamtypes'] = []
         lines = 0
-        for line in self.file_lines[beamparameters['NODOFBEAM']:]: #how many lines till ELEM appears- beams ends (every beam has 3 lines)
+        
+        beamparameters['index'] = [x for x in range(len(self.file_lines)) if 'NODOFBEAM' in self.file_lines[x]][0] #where NODOFBEAM appears - beamparameters in inFile.file_lines starts
+        beamparameters['beamtypes']= []
+        
+
+        beamparameters['beamline'] = [x for x in range(len(self.file_lines)) if 'BEAM' in self.file_lines[x]][0]  #where beam line appears (begining of the file)
+        beamparameters['elemstart']= 0
+
+        for line in self.file_lines[beamparameters['index']+1:]:#how many lines till ELEM appears- beams ends (every beam has 3 lines)
             if "ELEM" not in line:
                 if line.endswith(".tem\n"):
                     beamparameters['beamtypes'].append(line[:-5]) 
                 if line.endswith(".tem"):
-                    beamparameters['beamtypes'].append(line[:-4])
+                    beamparameters['beamtypes'].append(line[:-4]) # question? - are here possibilities to have line ending without \n ?   
                 lines+=1
             else:
-                beamparameters['elem_start'] = beamparameters['NODOFBEAM']+lines # ELEM starts
-                break
+                beamparameters['elemstart'] = beamparameters['index']+2+lines
+
         beamparameters['beamnumber'] = len(beamparameters['beamtypes'])
         return beamparameters
-
-    def move(self, vector):
-        for n in self.nodes:
-            l = self.file_lines[self.beamparameters['nodes']+int(n[0])].split()
-            for i in range(3):
-                n[i+1] = n[i+1] + vector[i]
-                l[i+2] = str(float(l[i+2]) + vector[i])
-                self.file_lines[self.beamparameters['nodes']+int(n[0])] = '\t'.join(l) + '\n'
-
-    def save_line(self, name, path='.'):
-        with open(os.path.join(path, name), 'w') as file:
-            file.writelines(self.file_lines)
-
-
-def temp_move(file):
-    infile = read_in(file)
-    infile.move([0, 0, 0.2])
-    infile.save_line('urania_obc_przes1.in')
 
 
 # if you want to run a function from this file, add the function name as the first parameter
