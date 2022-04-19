@@ -5,7 +5,7 @@ from subprocess import run
 import numpy as np
 import pandas as pd
 
-from safir_tools import read_in, run_safir
+from safir_tools import read_in
 
 
 class FDS2ASCII:
@@ -130,9 +130,19 @@ class TempLayer:
         with open(n, 'w') as file:
             file.writelines([f'{i[0]}\t{i[1]}\n' for i in self.temp_time])
 
-    def prepare4safir(self, structure):
+    def prepare4safir(self, structure, weried_c=0, newlines=None, profiles=None):
+        if not newlines:
+            newlines = list(structure.file_lines)
         parameters = structure.beamparameters
-        profiles = parameters['beamtypes']
+        if not profiles:
+            profiles = parameters['beamtypes']
+
+        def copy_tor(old, profile):
+            with open(f'{old}-1.T0R') as file:
+                tor = file.read()
+
+            with open(f'{profile}-1.T0R', 'w') as file:
+                file.write(tor)
 
         def modify_in(old, profile):
             with open(f'{old}.in') as file:
@@ -159,40 +169,74 @@ class TempLayer:
 
         # check if beam is in bounds of the layer (self.bounds)
         def is_in_bounds(beam, nodes):
-            if all([all([self.bounds[i][0] <= nodes[n-1][i+1] <= self.bounds[i][1] for i in range(3)]) for n in beam[1:]]):
+            # if int(beam[0]) == 4284:
+            #     print(self.bounds)
+            #     print([nodes[beam[1]-1][i+1] for i in range(3)])
+            #     print([self.bounds[i][0] <= nodes[beam[1]-1][i+1] <= self.bounds[i][1] for i in range(3)])
+            if all([self.bounds[i][0] <= nodes[beam[3]-1][i+1] <= self.bounds[i][1] for i in range(3)]):# for n in beam[1:]]):
                 return True
 
-        # add another BEAMTYPE and create corresponding TEM file
-        for p in profiles:
-            if 'f2a' not in p:
-                new_name = f'f2a_{self.name}_{p}'
-                profiles.append(new_name)
-                modify_in(p, new_name)  # modify TEM file with proper temperature function
-            else:
-                break
+        def change_beam_num(new_number):
+            line_params = structure.file_lines[structure.beamparameters['beamline']].split()
+            newbemline = f'\t {line_params[0]} {line_params[1]} {new_number} \n'
+            newlines[structure.beamparameters['beamline']] = newbemline
 
+        # def add_rows_for_layer():
+        #     end = len(structure.file_lines) - list(reversed(structure.file_lines)).index(
+        #         'END_TRANS\n')  # start + self.inFile.beamparameters['beamnumber'] * 3
+        #
+        #     newlines.insert(end, ''.join([f'{newp}.tem\n TRANSLATE    1    1\nEND_TRANS\n' for newp in list(reversed(new_profs))]))
+
+        # add another BEAMTYPE and create corresponding TEM file
+
+
+        change_beam_num(len(profiles))
+
+        # add_rows_for_layer()
+
+        parameters['elemstart'] = parameters['elemstart']
+        # print(parameters['elemstart'])
+
+        x = True
         # change BEAMTYPE for elements in this layer
-        for l, line in enumerate(structure.file_lines[parameters['elemstart']:]):     # parse over all BEAM elements
+        for l, line in enumerate(structure.file_lines[parameters['elemstart']-2:]):     # parse over all BEAM elements
+            print(line) if x else None
             elem_data = line.split()
             if 'ELEM' not in line or 'RELAX' in line:   # break condition
                 break
             if is_in_bounds(structure.beams[int(elem_data[1]) - 1], structure.nodes):   # check if the BEAM is in the layer
-                actual_line = parameters['elemstart'] + l
+                actual_line = parameters['elemstart'] + l - 2 # + weried_c
+
                 for p in profiles:
-                    if all([i in p for i in [profiles[int(elem_data[-1])], self.name]]):
-                        new_beam_number = profiles.index(p)
+                    if all([i in p for i in [infile.beamparameters['beamtypes'][int(elem_data[-1])-1], self.name]]):
+                        new_beam_number = profiles.index(p) + 1
+                        # [print(i, ' ', p) for i, p in enumerate(profiles)]
+                        # print(new_beam_number)
+                        # exit()
+                        break
                 try:
-                    structure.file_lines[actual_line] = f'  \t{"    ".join(elem_data[:-1])}\t{new_beam_number}\n'
+                    newlines[actual_line] = f'  \t{"    ".join(elem_data[:-1])}\t{new_beam_number}\n'
                 except UnboundLocalError:
                     print(l, line)
+                    [print(i, ' ', p) for i, p in enumerate(profiles)]
+                    print(self.name, infile.beamparameters['beamtypes'][int(elem_data[-1])-1])
+                    exit()
                     # print(structure.nodes[int(elem_data[2])])
                     # print(actual_line)
                     # print(int(elem_data[-1]), np.array(profiles), self.name)
-                    exit()
+                    pass
+            x = False
 
         print(f'[OK] Slice {self.name} is ready')
 
-        return structure
+        return structure, newlines
+
+
+
+def prep4safir(layer, infile):
+    pass
+
+
 
 
 class Slice:
@@ -260,20 +304,20 @@ def do_layers(zsize=1, offset=9.4):
 
 if __name__ == '__main__':
     # extract_data()
-    chdir('fds2ascii')
+    # chdir('fds2ascii')
     layers = do_layers()
 
     i = 0
-    for e in scandir():
-        if 'f2a' in e.name:
-            with open(e.name) as file:
-                df = pd.read_csv(file, names=['C1', 'C2', f'{e.name.split("_")[1]}'], skiprows=[0, 1], dtype=float)
-            for l in layers:
-                l.add_mean_data(df)
-            i += 1
-            print(f'{i}/{43 * 180} ({round(i / 43 / 1.8, 2)}%) CSV files scanned {e.name}\r')
+    # for e in scandir():
+    #     if 'f2a' in e.name:
+    #         with open(e.name) as file:
+    #             df = pd.read_csv(file, names=['C1', 'C2', f'{e.name.split("_")[1]}'], skiprows=[0, 1], dtype=float)
+    #         for l in layers:
+    #             l.add_mean_data(df)
+    #         i += 1
+    #         print(f'{i}/{43 * 180} ({round(i / 43 / 1.8, 2)}%) CSV files scanned {e.name}\r')
 
-    chdir('..')
+    # chdir('..')
 
     # # gather slice data and prepare time-temperature files
     # s.save('slice1.csv')
@@ -283,17 +327,41 @@ if __name__ == '__main__':
     # print(s.df.head())
     # layers = s.divide()
 
+    print(np.array([l.bounds for l in layers]))
+
     # modify structural and create thermal input files
-    infile = read_in('hala_urania.in')
+    infile = read_in('urania_obc_przes1.in')
+    new_lines = None
+
+    profs = []
     for l in layers:
+        for p in infile.beamparameters['beamtypes']:
+            if 'f2a' not in p:
+                new_name = f'f2a_{l.name}_{p}'
+                profs.append(new_name)
+                # modify_in(p, new_name)  # modify TEM file with proper temperature function
+                # copy_tor(p, new_name)
+            else:
+                break
+    for wc, l in enumerate(layers):
         l.tt_from_dict()
         l.save_function()
-        infile = l.prepare4safir(infile)
-    with open('urania_f2a.in', 'w') as file:
-        file.writelines(infile.file_lines)
+        infile, new_lines = l.prepare4safir(infile, newlines=new_lines, weried_c=wc, profiles=profs)
 
-    # run calculations
-    print(infile.beamparameters['beamtypes'])
-    for prof in infile.beamparameters['beamtypes']:
-        run_safir(abspath(f'{prof}.in'))
-    run_safir('urania_f2a.in')
+        # print(new_lines[infile.beamparameters['beamline']])
+
+
+
+
+    end = len(infile.file_lines) - list(reversed(infile.file_lines)).index(
+        'END_TRANS\n')  # start + self.inFile.beamparameters['beamnumber'] * 3
+    new_lines.insert(end,
+                    ''.join([f'{newp}.tem\n TRANSLATE    1    1\nEND_TRANS\n' for newp in profs]))
+
+
+
+    # print(np.array(infile.beamparameters['beamtypes']))
+    with open('.\\urania_obc_przes_f2a.in', 'w') as file:
+        file.writelines(new_lines)
+
+    # run('python D:\\fireeng-tools\\structures\\iso2nf.py -m iso -r .\\calc\\urania_f2a.in -s D:\\safir.exe -c .')
