@@ -1,6 +1,6 @@
 import subprocess
 import sys
-from os import getcwd, chdir
+from os import getcwd, chdir, symlink
 from datetime import datetime as dt
 
 from xml.dom.minidom import parse as pxml
@@ -30,16 +30,27 @@ def repair_relax_in_xml(xml_file_path):
 
 
 # running SAFIR simulation
-def run_safir(in_file_path, safir_exe_path='./safir.exe', print_time=True, fix_rlx=True, verbose=False):
+def run_safir(in_file_path, safir_exe_path='safir', print_time=True, fix_rlx=True, verbose=False, wine=False, key=None):
     start = dt.now()
     backpath = getcwd()
     dirpath = dirname(in_file_path)
     chdir(dirpath)
     chid = basename(in_file_path)[:-3]
+    
+    if key:
+        try:
+            symlink(key, './identity.key')
+            print('[OK] License file linked')
+        except FileExistsError:
+            print('[OK] License file already linked')
 
     print(f'[INFO] Calculations started at {start}') if print_time else print(f'Running {chid}...')
     print(f'Reading {chid}.in file...') if print_time else None
-    process = subprocess.Popen([safir_exe_path, chid], shell=False, stdout=subprocess.PIPE)
+    if not wine:
+        process = subprocess.Popen([safir_exe_path, chid], shell=False, stdout=subprocess.PIPE)
+    else:
+        process = subprocess.Popen(['wine', safir_exe_path, chid], shell=False, stdout=subprocess.PIPE)
+
     print_all = verbose
     success = True
     count = 0

@@ -35,8 +35,16 @@ def read_mech_input(path_to_frame):
             tems[str(c)] = [''.join(lin[:-1].split('.tem')), no]
             c += 1
 
+        elif '.TEM' in lin:  # beam TEM files
+            tems[str(c)] = [''.join(lin[:-1].split('.TEM')), no]
+            c += 1
+
         elif '.tsh' in lin:  # shell TSH files
             tshs[str(d)] = [''.join(lin[:-1].split('.tsh')), no]
+            d += 1
+
+        elif '.TSH' in lin:  # shell TSH files
+            tshs[str(d)] = [''.join(lin[:-1].split('.TSH')), no]
             d += 1
 
         elif 'NODOFBEAM' in lin:
@@ -67,8 +75,8 @@ def read_mech_input(path_to_frame):
 # return the input file path regarding to GiD catalogues or files with no further directory tree
 # (make this comment better, please)
 def find_paths(config_path, chid, shell=False):
-    gid_paths = [f'{config_path}/{chid}.gid/{chid}{i}' for i in ['.in', '-1.T0R']]
-    other_in_path = f'{config_path}/{chid}.in'
+    gid_paths = [f'{config_path}/{chid}.gid/{chid}{i}' for i in ['.IN', '-1.T0R']]
+    other_in_path = f'{config_path}/{chid}.IN'
     other_tor_paths = [f'{config_path}/{chid}{i}' for i in ['-1.T0R', 'T0R', 't0r', 'tor', 'TOR']]
     expected_paths_no = 2
 
@@ -118,7 +126,7 @@ class ThermalTEM:
     # changing input file form iso curve to natural fire mode
     def change_in(self, mech_chid):
         # open thermal analysis input file
-        with open(f'{self.sim_dir}/{self.chid}.in') as file:
+        with open(f'{self.sim_dir}/{self.chid}.IN') as file:
             init = file.readlines()
 
         # save backup of input file
@@ -236,7 +244,7 @@ class ThermalTEM:
         copy2(self.config_paths[0], self.sim_dir)
 
     # default calculations (preparations should have already been done)
-    def run(self, safir_exe, verb):
+    def run(self, safir_exe, verb, unix, identity=None):
         # verbose output - all SAFIR logs are passed to the console
         if verb == 'verbose':
             v = True
@@ -250,7 +258,8 @@ class ThermalTEM:
             v = False
             pt = True
 
-        run_safir(f'{self.sim_dir}/{self.chid}.IN', safir_exe_path=safir_exe, print_time=pt, verbose=v, fix_rlx=False)
+        identity = identity if unix else None
+        run_safir(f'{self.sim_dir}/{self.chid}.IN', safir_exe_path=safir_exe, print_time=pt, verbose=v, fix_rlx=False, key=identity)
         self.insert_tor()
 
 
@@ -376,7 +385,7 @@ class ThermalTSH:
         copy2(self.config_path, self.sim_dir)
 
     # default calculations (preparations should have already been done)
-    def run(self, safir_exe, verb):
+    def run(self, safir_exe, verb, unix, identity=None):
         # verbose output - all SAFIR logs are passed to the console
         if verb == 'verbose':
             v = True
@@ -390,7 +399,9 @@ class ThermalTSH:
             v = False
             pt = True
 
-        run_safir(f'{self.sim_dir}/{self.chid}.IN', safir_exe_path=safir_exe, print_time=pt, verbose=v, fix_rlx=False)
+        identity = identity if unix else None
+        run_safir(f'{self.sim_dir}/{self.chid}.IN', safir_exe_path=safir_exe, print_time=pt, verbose=v, fix_rlx=False,\
+                key=identity)
 
 
 class Mechanical:
@@ -442,7 +453,7 @@ class Mechanical:
         with open(self.input_file, 'w') as file:
             file.writelines(init)
 
-    def run(self, safir_exe, verb):
+    def run(self, safir_exe, verb, unix, identity=None):
         # verbose output - all SAFIR logs are passed to the console
         if verb == 'verbose':
             v = True
@@ -456,7 +467,7 @@ class Mechanical:
             v = False
             pt = True
 
-        run_safir(self.input_file, safir_exe_path=safir_exe, print_time=pt, verbose=v)
+        run_safir(self.input_file, safir_exe_path=safir_exe, print_time=pt, verbose=v, wine=bool(unix), key=identity)
 
 
 # to be rewritten in the future
@@ -609,14 +620,14 @@ def run_user_mode(sim_no, arguments):
         for t in m.thermals:
             st = sec()
             t.change_in(m.chid)
-            t.run(arguments.safir, arguments.verbose)
+            t.run(arguments.safir, arguments.verbose, arguments.unix, identity=arguments.identity)
             if arguments.verbose != 'warning':
                 print(f'Runtime of "{t.chid}" thermal analysis: {dt(seconds=int(sec() - st))}\n')
 
     # run mechanical analysis
     st = sec()
     m.change_in()
-    m.run(arguments.safir, arguments.verbose)
+    m.run(arguments.safirmech, arguments.verbose, arguments.unix, identity=arguments.identity)
 
     if arguments.verbose != 'warning':
         print(f'Runtime of "{m.chid}" mechanical analysis: {dt(seconds=int(sec() - st))}\n')
@@ -629,7 +640,8 @@ def get_arguments(from_argv):
     parser = ar.ArgumentParser(description='Run SAFIR localised fire analysis automatically')
 
     parser.add_argument('-c', '--config', help='Path to configuration directory', required=True)
-    parser.add_argument('-s', '--safir', help='Path to SAFIR executable', default='/safir.exe')
+    parser.add_argument('-s', '--safir', help='Path to SAFIR executable', default='safir')
+    parser.add_argument('-sm', '--safirmech', help='Path to SAFIR executable to run mechanical analysis', default=None)
     parser.add_argument('-m', '--model', help='Type of localised fire model to be used (hasemi/hsm or locafi/lcf or'
                                               'cfd/fds)', default='locafi')
     parser.add_argument('-r', '--results', nargs='+', help='Paths to mechanical analysis IN files (one scenario ->'
@@ -639,13 +651,21 @@ def get_arguments(from_argv):
     parser.add_argument('-v', '--verbose', default='trace', const='verbose', nargs='?',
                         help='Logging level ("trace" - reduced output [default], no argument or "verbose" - verbose'
                              'output, "warning" - warning level of logging)')
+    parser.add_argument('-u', '--unix', default=0, const=1, nargs='?',
+                        help='Compatibility with Linux version of the script.')
+    parser.add_argument('-i', '--identity', default='/identity.key', help='SAFIR license file [required for Linux].')
+    
 
     argums = parser.parse_args(args=from_argv)
 
     # change paths to absolute
     for k in argums.__dict__:
-        if k in ['model', 'check', 'verbose']:
+        if k in ['model', 'check', 'verbose', 'unix']:
             continue
+        elif k == 'safirmech':
+            if not k:
+                argums.__dict__[k] = argums.__dict__['safir']
+                continue
         try:
             argums.__dict__[k] = ap(argums.__dict__[k])
         except TypeError:
