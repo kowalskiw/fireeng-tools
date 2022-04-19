@@ -26,7 +26,9 @@ class ManyCfds:
     def main(self):
         self.copy_files()  # copying sections with adding 'cfd_' prefix
         self.get_all_transfer_files()
+        self.change_in_for_infiles()
         self.run_section()
+
         #self.show_domains()
 
     def copy_files(self):
@@ -41,6 +43,64 @@ class ManyCfds:
             except FileNotFoundError as e:
                 print(e)
                 sys.exit(1)
+
+    def change_in(self, thermal_in_file):
+        # new beam type is old + original beam types number + 1 (starts with 1 not 0)
+        print("MAMAMAMA")
+        newbeamtype = 1 + self.beamtypes.index(os.path.basename(thermal_in_file)[4:-3]) + \
+                      len(self.beamtypes)
+        print(newbeamtype)
+        # open thermal analysis input file
+        with open(thermal_in_file) as file:
+            init = file.readlines()
+
+        # save backup of input file
+        with open(f'{thermal_in_file}.bak', 'w') as file:
+            file.writelines(init)
+
+        # make changes
+        for no in range(len(init)):
+            line = init[no]
+            # type of calculation
+            if line == 'MAKE.TEM\n':
+                init[no] = 'MAKE.TEMCD\n'
+
+                # insert beam type
+                [init.insert(no + 1, i) for i in ['BEAM_TYPE {}\n'.format(newbeamtype), '{}.in\n'.format('dummy')]]
+
+            # change thermal attack functions
+            elif line.startswith('   F  ') and 'FISO' in line:  # choose heating boundaries with FISO or FISO0 frontier
+                # change FISO0 to FISO
+                if 'FISO0' in line:
+                    line = 'FISO'.join(line.split('FISO0'))
+
+                # choose function to be changed with
+                thermal_attack = 'CFD'
+
+                if 'F20' not in line:
+                    init[no] = 'FLUX {}'.format(thermal_attack.join(line[4:].split('FISO')))
+                else:
+                    init[no] = 'FLUX {}'.format('NO'.join((thermal_attack.join(line[4:].split('FISO'))).split('F20')))
+                    init.insert(no + 1, 'NO'.join(line.split('FISO')))
+
+            # change convective heat transfer coefficient of steel to 35 in locafi mode according to EN1991-1-2
+            elif 'STEEL' in line:
+                init[no + 1] = '{}'.format('35'.join(init[no + 1].split('25')))
+
+            # change T_END
+            elif ('TIME' in line) and ('END' not in line):
+                try:
+                    init[no + 1] = '    '.join([init[no + 1].split()[0], str(self.mechinfile.t_end), '\n'])
+                except IndexError:
+                    pass
+
+        # write changed file
+        with open(thermal_in_file, 'w') as file:
+            file.writelines(init)
+
+    def change_in_for_infiles(self):
+        for thermal_infile in self.all_thermal_infiles:
+            self.change_in(os.path.join(self.working_dir, thermal_infile))
 
     def get_all_transfer_files(self):
         """ adding all transfer files to transfer_files list"""
