@@ -5,6 +5,7 @@ import sys
 import os
 import argparse as ar
 from file_read_backwards import FileReadBackwards as frb
+from decimal import Decimal as dec
 
 
 class ManyCfds:
@@ -45,11 +46,15 @@ class ManyCfds:
                 sys.exit(1)
 
     def change_in(self, thermal_in_file):
-        # new beam type is old + original beam types number + 1 (starts with 1 not 0)
-        print("MAMAMAMA")
-        newbeamtype = 1 + self.beamtypes.index(os.path.basename(thermal_in_file)[4:-3]) + \
-                      len(self.beamtypes)
-        print(newbeamtype)
+        """
+        CHANGING PARAMETERS IN thermal.in files e.g cfd_ipe600.in
+        new beam type is old + original beam types number + 1 (starts with 1 not 0)
+
+        beamtypes = ['ipe600_1', 'ipe600_3', 'ipe600_2']
+        base(thermal_in_file) = cfd_ipe600_3.IN
+        """
+
+        newbeamtype = self.beamtypes.index(os.path.basename(thermal_in_file)[4:-3]) + len(self.beamtypes) +1
         # open thermal analysis input file
         with open(thermal_in_file) as file:
             init = file.readlines()
@@ -120,6 +125,7 @@ class ManyCfds:
         for i in self.all_sections:
             print(i.domain)
 
+
 class MechInFile(safir_tools.InFile):
     def __init__(self, mechanical_input_file):
         with open(mechanical_input_file) as file:
@@ -133,7 +139,7 @@ class MechInFile(safir_tools.InFile):
     def main(self):
         self.add_rows()  # doubling beam types with cfd version of each section
         self.double_beam_num()  # doubling beam types number
-        #self.save_file(self.file_lines)
+
 
     def add_rows(self):
         """Doubling rows in beamparameters in inFile.file_lines and adding 'cfd_' before beam name"""
@@ -150,11 +156,6 @@ class MechInFile(safir_tools.InFile):
         doubled_param = str(int(line_param_num) * 2)
         newbemline = ' \t '.join(("    ", line_params[0], line_params[1], doubled_param, '\n'))
         self.file_lines[self.beamline] = newbemline
-
-    def save_file(self, lines): #only for testing
-        print("zapisywanie")
-        with open("newtest.in", "w") as file:
-            file.writelines(lines)
 
 
 class Section:
@@ -181,11 +182,7 @@ class Section:
         self.run_safir_for_all_thermal()
 
         inFileCopy = copy.deepcopy(self.inFile)
-        """ what's the point of having these?
-        beamparams = inFileCopy.beamparameters
-        file_lines = inFileCopy.file_lines
-        btypes_in_domain = []
-        """
+
 
     def repair_cfdtxt(self):
         ch_nsteps = False
@@ -307,9 +304,17 @@ class Section:
     def run_safir_for_all_thermal(self):
         for thermal_file in self.thermal_files:
             file = os.path.join(self.working_dir, thermal_file)
+            print(f'\n >>>> {os.path.basename(self.transfer_file)} <<<<<')
             safir_tools.run_safir(file, self.safir_exe_path, fix_rlx=False)
+            """
             #[os.rename(f'{file[:-3]}.{e}', f'{file[:-3]}_{iteration}.{e}') for e in ['XML', 'OUT']]
-
+            while True:
+                try:
+                    [os.rename(f'{file[:-3]}.{e}', f'{file[:-3]}_{iteration}.{e}') for e in ['XML', 'OUT']]
+                    break
+                except FileExistsError:
+                    iteration = str(iteration) + 'a'
+            """
 
 class TransferDomain:
 
@@ -318,25 +323,35 @@ class TransferDomain:
         self.domain = self.find_transfer_domain()
 
     def find_transfer_domain(self):
+        def size(data):
+            data.sort()
+            return abs(data[1] - data[0])
+
+        def minmax(values: list, cell_size: float = 0):
+            return float(min(values) - cell_size / 2), float(max(values) + cell_size / 2)
+
         r = False
-        all_x, all_y, all_z = [], [], []
+        axes = [[], [], []]
+        domain = []
+
         with open(self.transfer_file) as file:
             for line in file:
+                spltd = line.split()
                 if r:
-                    try:
-                        x, y, z = line.split()
-                    except ValueError:
+                    if len(spltd) != 3:
                         break
-                    all_x.append(x)
-                    all_y.append(y)
-                    all_z.append(z)
-                if 'XYZ_INTENSITIES' in line:
+                    [axes[i].append(v) if v not in axes[i] else None for i, v in enumerate(spltd)]
+                elif 'XYZ_INTENSITIES' in line:
                     r = True
-        all_x = [float(x) for x in all_x]
-        all_y = [float(x) for x in all_y]
-        all_z = [float(x) for x in all_z]
 
-        domain = [min(all_x), max(all_x), min(all_y), max(all_y), min(all_z), max(all_z)]
+        axes = [[dec(axis[i]) for i in range(len(axis))] for axis in axes]
+        try:
+            cellsizes = [size(axis) for axis in axes]
+        except IndexError:
+            return []  # return empty list if transfer domain is flat
+
+        [[domain.append(j) for j in minmax(axes[i], cell_size=cellsizes[i])] for i in range(3)]
+
         # transfer domain boundaries
         return domain  # [XA, XB, YA, YB, ZA, ZB]
 
