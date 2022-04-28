@@ -1,4 +1,3 @@
-import os.path
 import subprocess
 import sys
 from os import getcwd, chdir
@@ -242,253 +241,29 @@ class InFile:
                 return float(self.file_lines[-i-2].split()[1])
 
     def get_beamparameters(self):
-        """ beamparameters mostly say in which line specific data appears.
-                IMPORTANT! table of data starts from 0 -> lines in notepad will be greater by 1
-        """
         beamparameters = {}
-
-        beamparameters['BEAM'] = [x for x in range(len(self.file_lines)) if 'BEAM' in self.file_lines[x]][0]  #where beam line appears (begining of the file)
-
-        for x in range(len(self.file_lines)):
-            if 'NODOFBEAM' in self.file_lines[x]:
-                beamparameters['NODOFBEAM'] = x
-            if 'END_TRANS' in self.file_lines[x]:
-                beamparameters['END_TRANS_LAST'] = x
-
-        beamparameters['elem_start'] = 0
-        beamparameters['beamtypes'] = []
         lines = 0
-        for line in self.file_lines[beamparameters['NODOFBEAM']:]: #how many lines till ELEM appears- beams ends (every beam has 3 lines)
+        
+        beamparameters['index'] = [x for x in range(len(self.file_lines)) if 'NODOFBEAM' in self.file_lines[x]][0] #where NODOFBEAM appears - beamparameters in inFile.file_lines starts
+        beamparameters['beamtypes']= []
+        
+
+        beamparameters['beamline'] = [x for x in range(len(self.file_lines)) if 'BEAM' in self.file_lines[x]][0]  #where beam line appears (begining of the file)
+        beamparameters['elemstart']= 0
+
+        for line in self.file_lines[beamparameters['index']+1:]:#how many lines till ELEM appears- beams ends (every beam has 3 lines)
             if "ELEM" not in line:
                 if line.endswith(".tem\n"):
                     beamparameters['beamtypes'].append(line[:-5]) 
                 if line.endswith(".tem"):
-                    beamparameters['beamtypes'].append(line[:-4])
+                    beamparameters['beamtypes'].append(line[:-4]) # question? - are here possibilities to have line ending without \n ?   
                 lines+=1
             else:
-                beamparameters['elem_start'] = beamparameters['NODOFBEAM']+lines # ELEM starts
-                break
+                beamparameters['elemstart'] = beamparameters['index']+2+lines
+
         beamparameters['beamnumber'] = len(beamparameters['beamtypes'])
         return beamparameters
 
-    def move(self, vector):
-        for n in self.nodes:
-            l = self.file_lines[self.beamparameters['nodes']+int(n[0])].split()
-            for i in range(3):
-                n[i+1] = n[i+1] + vector[i]
-                l[i+2] = str(float(l[i+2]) + vector[i])
-                self.file_lines[self.beamparameters['nodes']+int(n[0])] = '\t'.join(l) + '\n'
-
-    def save_line(self, name, path='.'):
-        with open(os.path.join(path, name), 'w') as file:
-            file.writelines(self.file_lines)
-
-
-def temp_move(file):
-    infile = read_in(file)
-    infile.move([0, 0, 0.2])
-    infile.save_line('urania_obc_przes1.in')
-
-
-# ================ new API-like part for SAFIR input files ===============
-
-class Entity:
-    def __init__(self):
-        self.tag = int
-        self.value = []
-        self.dim = int
-        self.prop = str if self.dim > 0 else None
-
-        #                           node (dim=0)   |  beam (dim=1)    | shell (dim=2)
-        self.load = []  # [Px, Py, Pz, Mx, My, Mz] | [qx, qy, qz]     | [qarea]
-        self.mass = []  # [m1, m2, m3, m4, m5, m6] | [m, rot_inertia] | [mass]
-
-        self.fix = []   # [1 for fixation, 0 for not fixed]
-
-        self.relax = []     # [relxation parameters]
-
-    
-class Entities:
-    def __init__(self):
-        self.dim = int
-        self.entities = []  # list of Entity objects
-        self.taglist = self.dotaglist()
-        self.numlist = self.taglist.values()
-
-        # properties
-        self.proprties = Propeties(self.dim)
-
-
-    # return dictionary of entities with tags as keys
-    def dotagdict(self):
-        tag_dict = {}
-        for e in self.entities:
-            tag_dict[str(e.tag)] = e.value
-
-        return tag_dict
-
-
-class Nodes(Entities):
-    def __init__(self):
-        super().__init__(self)
-        self.dim = 0
-
-
-class Beams(Entities):
-    def __init__(self):
-        super().__init__(self)
-        self.dim = 1
-        self.profiletag = int 
-        # self.relax = {}     # {'tag': [relaxation parameters (float)], ... }
-
-
-class Shells(Entities)
-    def __init__(self):
-        super().__init__(self)
-        self.dim = 2
-        self.vert = 4      # number of vertices (quad elements are default)
-        self.tshtag = int
-
-        # conditions
-        self.frontiers = [None, None, None, None]     # [FUNC1, FUNC2, FUNC3, FUNC4]
-        self.flux = [None, None, None, None]     # [FUNC1, FUNC2, FUNC3, FUNC4]
-        self.temp = [None, None, None, None]     # [FUNC1, FUNC2, FUNC3, FUNC4]
-        self.void = [None, None, None, None]     # [FUNC1, FUNC2, FUNC3, FUNC4]
-        
-
-class Solids(Entities)
-    def __init__(self):
-        super().__init__(self)
-        self.dim = 2
-        self.vert = 8      # number of vertices (hexahedral elements are default)
-        
-        # there should be some temperature constraints also
-
-
-class Geometry:
-    def __init__(self, n=None: Nodes, b=None: Beams, sh=None: Shells,
-                 sd=None: Solids):
-        self.nodes = n
-        self.beams = b
-        self.shells = sh
-        self.solids = sd
-
-        self.profiles = {} # list of profiles {'b': {'profile': [globalmat1, globalmat2 ... ] ... }, 'sh': {...}}
-
-    def read(self, file_lines, dim=None: list):
-        # read entities form file lines
-        # possible to read only chosen dimensions
-        pass
-    
-    def write(self, file_lines=None, mode=None, dim=None: list):
-        # return geometry lines entities form file lines
-        # possible to write only chosen dimensions
-        # possible to write (append or replace) geometry in filelines
-        pass
-
-# 
-# class Thermal2D(Properties):
-#     def __init__(self):
-#         super().__init__(self)
-#         self.frontiers = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
-#         self.flux = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
-#         self.temp = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
-# 
-#         
-# 
-# class Thermal3D(Properties):
-#     def __init__(self):
-#         super().__init__(self)
-#         self.frontiers = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
-#         self.flux = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
-#         self.temp = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
-# 
-# 
-# class ThermalTSH(Properties):
-#     def __init__(self):
-#         super().__init__(self)
-#         self.frontiers = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
-#         self.flux = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
-#         self.temp = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
-# 
-# # # class Structural2D(Properites): #     def __init__(self):
-#         super().__init__(self)
-#         self.loads = {}
-#         self.masses = {}
-# 
-# 
-# class Structural3D(Properites):
-#     def __init__(self):
-#         super().__init__(self)
-#         pass
-# 
-
-# to be developed in the future: one material in SAFIR = one class
-class Material:
-    def __init__(self):
-        self.name = str
-        self.parameters = []    # list of parameters required by SAFIR for the Material
-
-
-class NewInFile:
-    def __init__(self, problemtype: str, chid=None, path=None):
-        # file data
-        self.chid = chid if chid else None
-        self.path = path if path else None
-        self.lines = []
-        
-        self.pt = problemtype
-
-        # geometry
-        self.geom = Geometry()
-
-        # simulation
-        self.nfiber = 440   # default GiD number
-        self.time_end = 1800    # default
-        self.algorithm = 1      # 1 for PARDISO, 0 for CHOLESKY
-        self.cores = 1  # valid only if self.algorithm == 1
-        self.description = 'SAFIR simulaion produced with safir_tools.py\nvisit 
-                            github.com\kowalskiw\\fireeng-tools for more details'
-        self.materials = [] # list of Material objects
-
-
-
-        
-    def read_lines(self, path):
-        with open(path) as f:
-            self.lines = f.readlines()
-        
-        self.path = path
-        self.chid = '.'.join(os.basename(path).split('.')[:-1])
-
-    def read_sim(self, path=None):
-        p = self.path if not path else path
-        read_lines(p)
-        read_data()
-
-    def read_data(self):
-        pass
-    
-    # save lines to path
-    def write_lines(self, path, update=True):
-        self.update_lines() if update else None
-        with open(path, 'w') as f:
-            f.writelines(self.lines)
-        
-
-    # replace lines with current data
-    def update_lines(self):
-        pass
-
-
-class Thermal2d(NewInFile):
-    def __init__(self):
-        super().__init__(self, 'Thermal2D')
-
-
-
-
-    
 
 # if you want to run a function from this file, add the function name as the first parameter
 # the rest of the parameters will be forwarded to the called function (files as a full path)
