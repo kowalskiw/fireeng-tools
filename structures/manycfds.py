@@ -402,3 +402,4 @@ if __name__ == '__main__':
         mech_in = os.path.join(my_sim, [x for x in dir_list if x.endswith("in") or x.endswith("IN")][0])
         manycfds = ManyCfds(config_dir, transfer_dir, mech_in, args.__dict__["safir_exe_path"])
         manycfds.main()
+

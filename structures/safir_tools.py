@@ -1,7 +1,7 @@
 import os.path
 import subprocess
 import sys
-from os import getcwd, chdir
+from os import getcwd, chdir, symlink
 from datetime import datetime as dt
 
 from xml.dom.minidom import parse as pxml
@@ -31,16 +31,27 @@ def repair_relax_in_xml(xml_file_path):
 
 
 # running SAFIR simulation
-def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True, fix_rlx=True, verbose=False):
+def run_safir(in_file_path, safir_exe_path='safir', print_time=True, fix_rlx=True, verbose=False, wine=False, key=None):
     start = dt.now()
-    print(f'[INFO] Calculations started at {start}') if print_time else None
     backpath = getcwd()
     dirpath = dirname(in_file_path)
     chdir(dirpath)
     chid = basename(in_file_path)[:-3]
+    
+    if key:
+        try:
+            symlink(key, './identity.key')
+            print('[OK] License file linked')
+        except FileExistsError:
+            print('[OK] License file already linked')
 
-    print(f'Reading {chid}.in file...')
-    process = subprocess.Popen(' '.join([safir_exe_path, chid]), shell=False, stdout=subprocess.PIPE)
+    print(f'[INFO] Calculations started at {start}') if print_time else print(f'Running {chid}...')
+    print(f'Reading {chid}.in file...') if print_time else None
+    if not wine:
+        process = subprocess.Popen([safir_exe_path, chid], shell=False, stdout=subprocess.PIPE)
+    else:
+        process = subprocess.Popen(['wine', safir_exe_path, chid], shell=False, stdout=subprocess.PIPE)
+
     print_all = verbose
     success = True
     count = 0
@@ -73,16 +84,17 @@ def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True
 
     if not rc:
         if success:
-            print(f'[OK] SAFIR finished {count} "{chid}" calculations at')
-            print(f'[INFO] Computing time: {dt.now() - start}')
-            repair_relax(f'{dirpath}\\{chid}.XML') if fix_rlx else None
+            if print_time:
+                print(f'[OK] SAFIR finished {count} "{chid}" calculations at')
+                print(f'[INFO] Computing time: {dt.now() - start}')
+            repair_relax(f'{dirpath}/{chid}.XML') if fix_rlx else None
             return 0
         else:
             print(f'[WARNING] SAFIR finished "{chid}" calculations with error!')
             return -1
 
 
-def repair_relax(path_to_xml, copyxml=True):
+def repair_relax(path_to_xml, copyxml=True, verb=True):
     rlx_lines = []
     index = 0
     fixed = 0
@@ -100,7 +112,7 @@ def repair_relax(path_to_xml, copyxml=True):
     with open(f'{path_to_xml[:-4]}_fixed.XML' if copyxml else path_to_xml, 'w') as newxml:
         newxml.writelines(rlx_lines)
 
-    print(f'[OK] {fixed} XML file lines fixed (relaxations bug)')
+    print(f'[OK] {fixed} XML file lines fixed (relaxations bug)') if verb else None
 
     return 0
 
@@ -239,7 +251,6 @@ class InFile:
     def get_time(self):
         for i, l in enumerate(reversed(self.file_lines)):
             if 'ENDTIME' in l:
-                return float(self.file_lines[-i-2].split()[1])
 
     def get_beamparameters(self):
         """ beamparameters mostly say in which line specific data appears.
@@ -486,9 +497,6 @@ class Thermal2d(NewInFile):
         super().__init__(self, 'Thermal2D')
 
 
-
-
-    
 
 # if you want to run a function from this file, add the function name as the first parameter
 # the rest of the parameters will be forwarded to the called function (files as a full path)
