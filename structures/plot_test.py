@@ -5,9 +5,9 @@ class DomainPlot:
 	def __init__(self, domains, points):
 		self.domains = domains
 		self.points = points
-
 		fig = plt.figure()
 		ax = fig.add_subplot(projection='3d')
+
 
 		for domain in self.domains:
 			d = domain
@@ -51,17 +51,15 @@ class DomainPlot:
 			for line in self.domain_lines:
 				ax.plot(*line, color='black')
 
+			for point in self.points:
+				ax.scatter(*point, color="black", s=2)
+
+
 			ax.set_xlabel('X')
 			ax.set_ylabel('Y')
 			ax.set_zlabel('Z')
 
 		plt.show()
 
-domains = [[10.175, 10.925, 27.125, 27.525, 2.525, 3.225],
-		[11.175, 12.925, 28.125, 27.525, 2.525, 3.225],
-		[12.175, 11.925, 25.125, 26.525, 12.525, 13.225]]
-points =[1,2,3]
-
-
-d = DomainPlot(domains, points)
-#if __name__=="__main__":
+if __name__ == "__main__":
+	d = DomainPlot()
