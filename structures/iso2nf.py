@@ -7,6 +7,7 @@ from sys import argv
 import argparse as ar
 from safir_tools import run_safir
 from manycfds import ManyCfds
+from os import symlink
 
 '''New, simpler and more object-oriented code'''
 
@@ -53,18 +54,24 @@ def read_mech_input(path_to_frame):
             beam_read = False
             shell_read = True
 
-        elif '      ELEM' in lin:  # add first element name to each profile
+        elif 'ELEM' in lin:  # add first element name to each profile
             element = lin.split()
-            if len(element) > 7:
+            if any([2 > len(element), len(element) > 7]):
                 continue
-            if len(tems[element[-1]]) < 3:
-                number = element[1]
-                for i in range(5 - len(number)):
-                    number = f'0{number}'
-                if beam_read:
+
+            if beam_read:
+                if len(tems[element[-1]]) < 3:
+                    number = element[1]
+                    for i in range(5 - len(number)):
+                        number = f'0{number}'
                     tems[element[-1]].append(f'b{number}_1.tem')
-                elif shell_read:
-                    tshs[element[-1]].append(f's{number}_1.tem')
+
+            elif shell_read:
+                if len(tshs[element[-1]]) < 3:
+                    number = element[1]
+                    for i in range(5 - len(number)):
+                        number = f'0{number}'
+                    tshs[element[-1]].append(f's{number}_1.tsh')
 
         elif 'TIME' in lin.split():
             t_end = float(frame_lines[no + 1].split()[1])
@@ -117,7 +124,7 @@ class ThermalTEM:
         self.beam_type = int(beam_type)
         self.t_end = sim_time
         if self.model in {'iso', 'standard', 'fiso', 'f20', 'cold'}:
-            self.first = self.chid + '.tem'
+            self.first = self.chid + '.TEM'
         else:
             self.first = from_mech[2]
         self.sim_dir = sim_dir
@@ -266,12 +273,12 @@ class ThermalTEM:
 class ThermalTSH:
     def __init__(self, shell_type, from_mech, path_to_config, fire_model, sim_time, sim_dir):
         self.chid = from_mech[0]
-        self.config_path = find_paths(path_to_config, self.chid)[0]  # [input file path]
+        self.config_path = find_paths(path_to_config, self.chid, shell=True)[0]  # [input file path]
         self.model = fire_model.lower()
         self.shell_type = int(shell_type)
         self.t_end = sim_time
         if self.model.lower() in {'iso', 'fiso', 'standard', 'f20', 'cold'}:
-            self.first = self.chid + '.tsh'
+            self.first = self.chid + '.TSH'
         else:
             self.first = from_mech[2]
         self.sim_dir = sim_dir
@@ -294,7 +301,7 @@ class ThermalTSH:
             line = init[no]
 
             # type of calculation
-            if line == 'MAKE.TEM\n':
+            if 'MAKE.TSH\n' in line:
                 if self.model in {'cfd', 'fds'}:
                     init[no] = 'MAKE.TSHCD\n'
                 elif self.model in {'lcf', 'locafi'}:
@@ -303,7 +310,8 @@ class ThermalTSH:
                     init[no] = 'MAKE.TSHHA\n'
 
                 # insert shell type and mechanical file reference
-                [init.insert(no + 1, i) for i in [f'{mech_chid}.IN\n', f'SHELL_TYPE {self.shell_type}\n']]
+                if not self.model in {'iso', 'fiso', 'standard'}:
+                    [init.insert(no + 1, i) for i in [f'SHELL_TYPE {self.shell_type}\n', f'{mech_chid}.IN\n']]
 
             # change thermal attack functions
             elif line.startswith('   F  ') and 'FISO' in line:  # choose heating boundaries with FISO or FISO0 frontier
@@ -350,7 +358,7 @@ class ThermalTSH:
     # insert data that were lost in thermal analysis
     # not ready yet - to be developed in the future
     def insert_data(self, data_lines=False):
-        print('[WARNING] There is not possible to take rebars into consideration now. These feature will be developed')
+        print('[WARNING] This is not possible to take rebars into consideration now. It will be developed in the future')
         # paste them into tsh file (begining)
         if not data_lines:
             # calculate thickness
@@ -360,12 +368,12 @@ class ThermalTSH:
             read = False
             nodes = []
             for line in shell_result:
-                if 'NUMBER OF POSITIONS' in line:
-                    read = True
-                elif 'TIME' in line:
+                if 'TIME' in line:
                     break
                 if read:
                     nodes += line.split()
+                elif 'NUMBER OF POSITIONS' in line:
+                    read = True
 
             thickness = abs(float(nodes[0]) - float(nodes[-1]))
 
@@ -379,7 +387,10 @@ class ThermalTSH:
             rebars = 0  # no rebars
 
             with open(self.first, 'w') as file:
-                file.writelines([f' THICKNESS {thickness}\n MATERIAL {material}\n REBARS {rebars}\n\n'] + shell_result)
+                file.writelines([f'\n THICKNESS {thickness}\n MATERIAL {material}\n REBARS {rebars}\n\n'] + shell_result)
+            
+            print(f'[OK] Thickness info added to the {self.first}')
+
 
     def in2sim_dir(self):
         copy2(self.config_path, self.sim_dir)
@@ -402,6 +413,7 @@ class ThermalTSH:
         identity = identity if unix else None
         run_safir(f'{self.sim_dir}/{self.chid}.IN', safir_exe_path=safir_exe, print_time=pt, verbose=v, fix_rlx=False,\
                 key=identity)
+        self.insert_data()
 
 
 class Mechanical:
@@ -608,6 +620,13 @@ def run_user_mode(sim_no, arguments):
     m.make_thermals(arguments.config)
 
     if m.model in {'cfd', 'fds'}:
+        # if unix link identity.key
+        try:
+            symlink(arguments.identity, './identity.key')
+            print('[OK] License file linked')
+        except FileExistsError:
+            print('[OK] License file already linked')
+
         # enable using many cfd transfer files
         ManyCfds(m.sim_dir, f'{arguments.config}/transfer_files/', m.input_file, arguments.safir).main()
 

@@ -46,7 +46,7 @@ def run_safir(in_file_path, safir_exe_path='safir', print_time=True, fix_rlx=Tru
             print('[OK] License file already linked')
 
     print(f'[INFO] Calculations started at {start}') if print_time else print(f'Running {chid}...')
-    print(f'Reading {chid}.in file...') if print_time else None
+    print(f'Reading {chid} input file...') if print_time else None
     if not wine:
         process = subprocess.Popen([safir_exe_path, chid], shell=False, stdout=subprocess.PIPE)
     else:
@@ -115,6 +115,12 @@ def repair_relax(path_to_xml, copyxml=True, verb=True):
     print(f'[OK] {fixed} XML file lines fixed (relaxations bug)') if verb else None
 
     return 0
+
+
+def move_in(infile, x, y, z):
+    infile = read_in(infile)
+    infile.move([float(i) for i in [x, y, z]])
+    infile.save_line(f'{infile.chid}_moved.in')
 
 
 # call functions to read single parts of results file
@@ -251,6 +257,7 @@ class InFile:
     def get_time(self):
         for i, l in enumerate(reversed(self.file_lines)):
             if 'ENDTIME' in l:
+                return float(self.file_lines[-i-2].split()[1])
 
     def get_beamparameters(self):
         """ beamparameters mostly say in which line specific data appears.
@@ -265,16 +272,16 @@ class InFile:
                 beamparameters['NODOFBEAM'] = x
             if 'END_TRANS' in self.file_lines[x]:
                 beamparameters['END_TRANS_LAST'] = x
+            if 'NODES' in self.file_lines[x]:
+                beamparameters['nodes'] = x
 
         beamparameters['elem_start'] = 0
         beamparameters['beamtypes'] = []
         lines = 0
         for line in self.file_lines[beamparameters['NODOFBEAM']:]: #how many lines till ELEM appears- beams ends (every beam has 3 lines)
             if "ELEM" not in line:
-                if line.endswith(".tem\n"):
+                if line.lower().endswith(".tem\n"):
                     beamparameters['beamtypes'].append(line[:-5]) 
-                if line.endswith(".tem"):
-                    beamparameters['beamtypes'].append(line[:-4])
                 lines+=1
             else:
                 beamparameters['elem_start'] = beamparameters['NODOFBEAM']+lines # ELEM starts
@@ -294,11 +301,6 @@ class InFile:
         with open(os.path.join(path, name), 'w') as file:
             file.writelines(self.file_lines)
 
-
-def temp_move(file):
-    infile = read_in(file)
-    infile.move([0, 0, 0.2])
-    infile.save_line('urania_obc_przes1.in')
 
 
 # ================ new API-like part for SAFIR input files ===============
@@ -353,7 +355,7 @@ class Beams(Entities):
         # self.relax = {}     # {'tag': [relaxation parameters (float)], ... }
 
 
-class Shells(Entities)
+class Shells(Entities):
     def __init__(self):
         super().__init__(self)
         self.dim = 2
@@ -367,7 +369,7 @@ class Shells(Entities)
         self.void = [None, None, None, None]     # [FUNC1, FUNC2, FUNC3, FUNC4]
         
 
-class Solids(Entities)
+class Solids(Entities):
     def __init__(self):
         super().__init__(self)
         self.dim = 2
@@ -377,8 +379,7 @@ class Solids(Entities)
 
 
 class Geometry:
-    def __init__(self, n=None: Nodes, b=None: Beams, sh=None: Shells,
-                 sd=None: Solids):
+    def __init__(self, n=None, b=None, sh=None, sd=None):
         self.nodes = n
         self.beams = b
         self.shells = sh
@@ -386,12 +387,12 @@ class Geometry:
 
         self.profiles = {} # list of profiles {'b': {'profile': [globalmat1, globalmat2 ... ] ... }, 'sh': {...}}
 
-    def read(self, file_lines, dim=None: list):
+    def read(self, file_lines, dim=None):
         # read entities form file lines
         # possible to read only chosen dimensions
         pass
     
-    def write(self, file_lines=None, mode=None, dim=None: list):
+    def write(self, file_lines=None, mode=None, dim=None):
         # return geometry lines entities form file lines
         # possible to write only chosen dimensions
         # possible to write (append or replace) geometry in filelines
@@ -458,8 +459,8 @@ class NewInFile:
         self.time_end = 1800    # default
         self.algorithm = 1      # 1 for PARDISO, 0 for CHOLESKY
         self.cores = 1  # valid only if self.algorithm == 1
-        self.description = 'SAFIR simulaion produced with safir_tools.py\nvisit 
-                            github.com\kowalskiw\\fireeng-tools for more details'
+        self.description = 'SAFIR simulaion produced with safir_tools.py\nvisit'\
+                            'github.com\kowalskiw\\fireeng-tools for more details'
         self.materials = [] # list of Material objects
 
 
