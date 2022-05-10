@@ -7,7 +7,7 @@ import argparse as ar
 import json
 from file_read_backwards import FileReadBackwards as frb
 from decimal import Decimal as dec
-from plot_test import DomainPlot
+#from plot_test import DomainPlot
 
 
 class ManyCfds:
@@ -33,16 +33,18 @@ class ManyCfds:
         self.copy_files()  # copying sections with adding 'cfd_' prefix
         self.get_all_transfer_files()
         self.change_in_for_infiles()
-        self.run_sections()
+        #self.run_sections()
         self.get_all_elements(self.mechinfile)
         self.save_json()
         #self.show_plot()
         self.victory()
 
     def gid_structure_bool(self):
-        if os.listdir(self.config_dir)[0].endswith(".gid"):
-            self.gid_structure = True
+        for file in os.listdir(self.config_dir):
+            if file.endswith(".gid"):
+                self.gid_structure = True
         print(self.gid_structure)
+
 
 
     def copy_files(self):
@@ -57,8 +59,7 @@ class ManyCfds:
 
                 except FileNotFoundError as e:
                     print(e)
-                    print("PIERWSZE")
-                    #sys.exit(1)
+                    sys.exit(1)
         else:
             for beam in self.beamtypes:
                 try:
@@ -69,7 +70,7 @@ class ManyCfds:
 
                 except FileNotFoundError as e:
                     print(e)
-                    print("DRUGIE")
+                    sys.exit(1)
 
 
     def change_in_for_infiles(self):
