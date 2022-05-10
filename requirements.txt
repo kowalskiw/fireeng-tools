@@ -1,0 +1,9 @@
+dxfgrabber==1.0.1
+file_read_backwards==2.0.0
+gmsh==4.10.1
+matplotlib==3.5.2
+numpy==1.22.3
+pandas==1.4.2
+Pillow==9.1.0
+pyiges==0.2.1
+PySimpleGUI==4.60.0
