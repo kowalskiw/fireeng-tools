@@ -117,8 +117,9 @@ def repair_relax(path_to_xml, copyxml=True, verb=True):
     return 0
 
 
-def move_in(infile, x, y, z):
-    infile = read_in(infile)
+# move all nodes with a given vector
+def move_in(infile_path, x, y, z):
+    infile = read_in(infile_path)
     infile.move([float(i) for i in [x, y, z]])
     infile.save_line(f'{infile.chid}_moved.in')
 
@@ -304,6 +305,7 @@ class InFile:
 
 
 # ================ new API-like part for SAFIR input files ===============
+# vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 class Entity:
     def __init__(self):
@@ -496,6 +498,8 @@ class NewInFile:
 class Thermal2d(NewInFile):
     def __init__(self):
         super().__init__(self, 'Thermal2D')
+
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 
