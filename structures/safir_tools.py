@@ -85,6 +85,7 @@ def run_safir(in_file_path, safir_exe_path='safir', print_time=True, fix_rlx=Tru
     if not rc:
         if success:
             if print_time:
+                count = 1 if count == 0 else count
                 print(f'[OK] SAFIR finished {count} "{chid}" calculations at')
                 print(f'[INFO] Computing time: {dt.now() - start}')
             repair_relax(f'{dirpath}/{chid}.XML') if fix_rlx else None
@@ -520,3 +521,4 @@ if __name__ == '__main__':
         raise Exception("Please provide function name")
     except KeyError:
         raise Exception(f"Function {function} was not found")
+

@@ -357,7 +357,7 @@ class Section:
             if 'ELEM' not in line or 'RELAX' in line:
                 break
             if int(elem_data[1]) in self.elements_inside_domain:
-                actual_line = self.beamparams['elem_start'] + lines
+                actual_line = self.beamparams['elem_start'] + lines + 1
                 new_beam_number = int(elem_data[-1]) + self.beamparams['beamnumber']
 
                 # add the beam type to be calculated

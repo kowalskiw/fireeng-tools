@@ -160,8 +160,9 @@ class Thermal:
                 elif self.model in {'hsm', 'hasemi'}:
                     init[no] = f'MAKE.{make[0]}HA\n'
 
-                # insert beam type
-                [init.insert(no + 1, i) for i in [f'{make[1]}_TYPE {self.elem_type}\n', f'{mech_chid}.IN\n']]
+                # insert element type
+                if self.model not in {'cold', 'f20', 'iso', 'fiso', 'standard'}:
+                    [init.insert(no + 1, i) for i in [f'{make[1]}_TYPE {self.elem_type}\n', f'{mech_chid}.IN\n']]
 
             # change thermal attack functions
             elif line.startswith('   F  ') and 'FISO' in line:  # choose heating boundaries with FISO or FISO0 frontier
@@ -617,27 +618,29 @@ def get_arguments(from_argv):
                              'output, "warning" - warning level of logging)')
     parser.add_argument('-u', '--unix', default=False, const=True, nargs='?',
                         help='Compatibility with Linux version of the script.')
-    parser.add_argument('-i', '--identity', default='/identity.key', help='SAFIR license file [required for Linux].')
+    parser.add_argument('-i', '--identity', default=None, help='SAFIR license file [required for Linux].')
     
 
     argums = parser.parse_args(args=from_argv)
 
     # change paths to absolute
     for k in argums.__dict__:
-        if k in ['model', 'check', 'verbose', 'unix']:
+        if k in {'model', 'unix', 'verbose', 'check'}:
             continue
-        elif k == 'safirmech':
-            if not k:
-                argums.__dict__[k] = argums.__dict__['safir']
-                continue
+        elif k == 'safirmech' and not argums.__dict__[k]:
+            argums.__dict__[k] = argums.safir
+            
         try:
             argums.__dict__[k] = ap(argums.__dict__[k])
         except TypeError:
-            l = []
-            for p in argums.__dict__[k]:
-                l.append(ap(p))
-            argums.__dict__[k] = l
-
+            try:
+                l = []
+                for p in argums.__dict__[k]:
+                    l.append(ap(p))
+                argums.__dict__[k] = l
+            except TypeError:
+                continue
+        
     return argums
 
 
@@ -653,3 +656,4 @@ if __name__ == '__main__':
     print('\n==================\nThank you for using our tools. We will appreciate your feedback and bug reports'
           ' on github: https://www.github.com/kowalskiw/fireeng-tools\n'
           'Have a good day!\n==================\n')
+
