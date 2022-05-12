@@ -265,7 +265,8 @@ class InFile:
                     beamparameters['beamtypes'].append(line[:-4])
                 lines+=1
             else:
-                beamparameters['elem_start'] = beamparameters['NODOFBEAM']+lines # ELEM starts
+                lines+=1
+                beamparameters['elem_start'] = beamparameters['NODOFBEAM'] + lines # ELEM starts
                 break
         beamparameters['beamnumber'] = len(beamparameters['beamtypes'])
         return beamparameters

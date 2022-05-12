@@ -33,19 +33,15 @@ class ManyCfds:
         self.copy_files()  # copying sections with adding 'cfd_' prefix
         self.get_all_transfer_files()
         self.change_in_for_infiles()
-        #self.run_sections()
+        self.run_sections()
         self.get_all_elements(self.mechinfile)
         self.save_json()
-        #self.show_plot()
         self.victory()
 
     def gid_structure_bool(self):
         for file in os.listdir(self.config_dir):
             if file.endswith(".gid"):
                 self.gid_structure = True
-        print(self.gid_structure)
-
-
 
     def copy_files(self):
         """ NAME CHANGE AND COPYING FILES + adding thermal infiles to the list self.all_thermal_infiles"""
@@ -87,6 +83,7 @@ class ManyCfds:
         """Create object based on transfer file"""
         for transfer_file in self.all_transfer_files:
             sect = Section(transfer_file,  self.mechinfile, self.working_dir, self.all_thermal_infiles, self.safir_exe_path)
+            sect.main()
             self.all_sections.append(sect)
 
     def save_json(self):
@@ -106,20 +103,11 @@ class ManyCfds:
     def get_all_elements(self, mechinfile):
         self.all_points_coor = [point[1:] for point in mechinfile.nodes[::5]]
 
-
-    def show_plot(self):
-        domains = [section.domain for section in self.all_sections]
-        points = self.all_points_coor
-        d = DomainPlot(domains, points)
-
-    def get_number_all_beams(self):
-        return sum([len(section.elements_inside_domain) for section in self.all_sections])
-
     def victory(self):
         len_tem_files = len([file for file in os.listdir(self.working_dir) if file.endswith("tem") or file.endswith("TEM")])
-        beams = self.get_number_all_beams()
+        beams = len(self.mechinfile.beams)
         if len_tem_files/2 == beams:
-            print(f'beams = {beams} tem_files = {len_tem_files}')
+            print(f'beams = {beams} tem_files = {len_tem_files} ')
             print("Number of tem files are correct, well done.")
         else:
             print(f'beams = {beams} tem_files = {len_tem_files}')
@@ -230,6 +218,8 @@ class MechInFile(safir_tools.InFile):
 
 
 class Section:
+
+    """  Zmienic na uruchamianie tylko na btypes """
     def __init__(self, transfer_file, inFile, working_dir, thermal_files, safir_exe_path):
         self.transfer_file = transfer_file
         self.inFile = inFile
@@ -242,14 +232,14 @@ class Section:
 
         self.btypes_in_domain = []
         self.beamparams = self.inFileCopy.beamparameters
+        self.beamtypes = self.inFile.beamparameters['beamtypes']
+
         self.elements_inside_domain = []
         self.section_data = {}  #data for json
-
-        self.main()
+        self.domain = TransferDomain(self.transfer_file).find_transfer_domain()
 
     def main(self):
         self.repair_cfdtxt()
-        self.domain = TransferDomain(self.transfer_file).find_transfer_domain()
         self.copy_to_working_dir()
         self.elements_inside_domain = self.find_elements_inside_domain(self.inFileCopy)
         self.change_endline_beam_id()
@@ -350,10 +340,11 @@ class Section:
             print(f'{elements_inside_domain}')
         return elements_inside_domain
 
-    def change_endline_beam_id(self):
 
+    def change_endline_beam_id(self):
+        """ need refactorization"""
         lines = 0
-        for line in self.file_lines[self.beamparams['elem_start']+1:]:
+        for line in self.file_lines[self.beamparams['elem_start']:]:
             elem_data = line.split()
             if 'ELEM' not in line or 'RELAX' in line:
                 break
@@ -377,16 +368,18 @@ class Section:
 
     def run_safir_for_all_thermal(self):
         for thermal_file in self.thermal_files:
-            file = os.path.join(self.working_dir, thermal_file)
-            print(f'\n >>>> {os.path.basename(self.transfer_file)} <<<<')
-            safir_tools.run_safir(file, self.safir_exe_path, fix_rlx=False)  # safir returns one .xml and one .out file
-            number = 1
-            while True:
-                try:
-                    [os.rename(f'{file[:-3]}.{e}', f'{file[:-3]}_{number}.{e}') for e in ['XML', 'OUT']]
-                    break
-                except FileExistsError:
-                    number += 1
+            beamtype = os.path.basename(thermal_file)[4:-3]
+            if self.beamtypes.index(beamtype) in self.btypes_in_domain:
+                file = os.path.join(self.working_dir, thermal_file)
+                print(f'\n >>>> {os.path.basename(self.transfer_file)} <<<<')
+                safir_tools.run_safir(file, self.safir_exe_path, fix_rlx=False)  # safir returns one .xml and one .out file
+                number = 1
+                while True:
+                    try:
+                        [os.rename(f'{file[:-3]}.{e}', f'{file[:-3]}_{number}.{e}') for e in ['XML', 'OUT']]
+                        break
+                    except FileExistsError:
+                        number += 1
 
     def get_data(self):
         """ collect data from section for json file"""
@@ -405,6 +398,7 @@ class Section:
         last_node_coor = self.inFile.nodes[last_node_id - 1][1:]
         return first_node_coor, last_node_coor
 
+"""  jako parametr  """
 
 class TransferDomain:
 
@@ -443,7 +437,7 @@ class TransferDomain:
 
         [[domain.append(j) for j in minmax(axes[i], cell_size=cellsizes[i])] for i in range(3)]
 
-        # transfer domain boundaries
+        # transfer domain boundxaries
         return domain  # [XA, XB, YA, YB, ZA, ZB]
 
 
