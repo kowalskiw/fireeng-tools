@@ -42,6 +42,7 @@ class ManyCfds:
         for file in os.listdir(self.config_dir):
             if file.endswith(".gid"):
                 self.gid_structure = True
+                break
 
     def copy_files(self):
         """ NAME CHANGE AND COPYING FILES + adding thermal infiles to the list self.all_thermal_infiles"""
@@ -84,7 +85,7 @@ class ManyCfds:
         for transfer_file in self.all_transfer_files:
             sect = Section(transfer_file,  self.mechinfile, self.working_dir, self.all_thermal_infiles, self.safir_exe_path)
             sect.main()
-            self.all_sections.append(sect)
+
 
     def save_json(self):
         data_to_save = {
@@ -240,6 +241,7 @@ class Section:
 
     def main(self):
         self.repair_cfdtxt()
+        self.domain = TransferDomain(self.transfer_file).find_transfer_domain()
         self.copy_to_working_dir()
         self.elements_inside_domain = self.find_elements_inside_domain(self.inFileCopy)
         self.change_endline_beam_id()
@@ -344,12 +346,12 @@ class Section:
     def change_endline_beam_id(self):
         """ need refactorization"""
         lines = 0
-        for line in self.file_lines[self.beamparams['elem_start']:]:
+        for line in self.file_lines[self.beamparams['elem_start']+1:]:
             elem_data = line.split()
             if 'ELEM' not in line or 'RELAX' in line:
                 break
             if int(elem_data[1]) in self.elements_inside_domain:
-                actual_line = self.beamparams['elem_start'] + lines
+                actual_line = self.beamparams['elem_start'] + lines + 1
                 new_beam_number = int(elem_data[-1]) + self.beamparams['beamnumber']
 
                 # add the beam type to be calculated
@@ -381,6 +383,7 @@ class Section:
                     except FileExistsError:
                         number += 1
 
+
     def get_data(self):
         """ collect data from section for json file"""
         self.section_data ={
@@ -398,7 +401,7 @@ class Section:
         last_node_coor = self.inFile.nodes[last_node_id - 1][1:]
         return first_node_coor, last_node_coor
 
-"""  jako parametr  """
+"""  as a parameter  """
 
 class TransferDomain:
 
@@ -487,4 +490,5 @@ if __name__ == '__main__':
         mech_in = os.path.join(my_sim, [x for x in dir_list if x.endswith("in") or x.endswith("IN")][0])
         manycfds = ManyCfds(config_dir, transfer_dir, mech_in, args.__dict__["safir_exe_path"])
         manycfds.main()
+
 

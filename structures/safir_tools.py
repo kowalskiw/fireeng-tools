@@ -1,6 +1,7 @@
+import os.path
 import subprocess
 import sys
-from os import getcwd, chdir
+from os import getcwd, chdir, symlink
 from datetime import datetime as dt
 
 from xml.dom.minidom import parse as pxml
@@ -30,16 +31,27 @@ def repair_relax_in_xml(xml_file_path):
 
 
 # running SAFIR simulation
-def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True, fix_rlx=True, verbose=False):
+def run_safir(in_file_path, safir_exe_path='safir', print_time=True, fix_rlx=True, verbose=False, wine=False, key=None):
     start = dt.now()
-    print(f'[INFO] Calculations started at {start}') if print_time else None
     backpath = getcwd()
     dirpath = dirname(in_file_path)
     chdir(dirpath)
     chid = basename(in_file_path)[:-3]
+    
+    if key:
+        try:
+            symlink(key, './identity.key')
+            print('[OK] License file linked')
+        except FileExistsError:
+            print('[OK] License file already linked')
 
-    print(f'Reading {chid}.in file...')
-    process = subprocess.Popen(' '.join([safir_exe_path, chid]), shell=False, stdout=subprocess.PIPE)
+    print(f'[INFO] Calculations started at {start}') if print_time else print(f'Running {chid}...')
+    print(f'Reading {chid} input file...') if print_time else None
+    if not wine:
+        process = subprocess.Popen([safir_exe_path, chid], shell=False, stdout=subprocess.PIPE)
+    else:
+        process = subprocess.Popen(['wine', safir_exe_path, chid], shell=False, stdout=subprocess.PIPE)
+
     print_all = verbose
     success = True
     count = 0
@@ -72,16 +84,18 @@ def run_safir(in_file_path, safir_exe_path='C:\SAFIR\safir.exe', print_time=True
 
     if not rc:
         if success:
-            print(f'[OK] SAFIR finished {count} "{chid}" calculations at')
-            print(f'[INFO] Computing time: {dt.now() - start}')
-            repair_relax(f'{dirpath}\\{chid}.XML') if fix_rlx else None
+            if print_time:
+                count = 1 if count == 0 else count
+                print(f'[OK] SAFIR finished {count} "{chid}" calculations at')
+                print(f'[INFO] Computing time: {dt.now() - start}')
+            repair_relax(f'{dirpath}/{chid}.XML') if fix_rlx else None
             return 0
         else:
             print(f'[WARNING] SAFIR finished "{chid}" calculations with error!')
             return -1
 
 
-def repair_relax(path_to_xml, copyxml=True):
+def repair_relax(path_to_xml, copyxml=True, verb=True):
     rlx_lines = []
     index = 0
     fixed = 0
@@ -99,9 +113,16 @@ def repair_relax(path_to_xml, copyxml=True):
     with open(f'{path_to_xml[:-4]}_fixed.XML' if copyxml else path_to_xml, 'w') as newxml:
         newxml.writelines(rlx_lines)
 
-    print(f'[OK] {fixed} XML file lines fixed (relaxations bug)')
+    print(f'[OK] {fixed} XML file lines fixed (relaxations bug)') if verb else None
 
     return 0
+
+
+# move all nodes with a given vector
+def move_in(infile_path, x, y, z):
+    infile = read_in(infile_path)
+    infile.move([float(i) for i in [x, y, z]])
+    infile.save_line(f'{infile.chid}_moved.in')
 
 
 # call functions to read single parts of results file
@@ -253,16 +274,16 @@ class InFile:
                 beamparameters['NODOFBEAM'] = x
             if 'END_TRANS' in self.file_lines[x]:
                 beamparameters['END_TRANS_LAST'] = x
+            if 'NODES' in self.file_lines[x]:
+                beamparameters['nodes'] = x
 
         beamparameters['elem_start'] = 0
         beamparameters['beamtypes'] = []
         lines = 0
         for line in self.file_lines[beamparameters['NODOFBEAM']:]: #how many lines till ELEM appears- beams ends (every beam has 3 lines)
             if "ELEM" not in line:
-                if line.endswith(".tem\n"):
+                if line.lower().endswith(".tem\n"):
                     beamparameters['beamtypes'].append(line[:-5]) 
-                if line.endswith(".tem"):
-                    beamparameters['beamtypes'].append(line[:-4])
                 lines+=1
             else:
                 lines+=1
@@ -270,6 +291,218 @@ class InFile:
                 break
         beamparameters['beamnumber'] = len(beamparameters['beamtypes'])
         return beamparameters
+
+    def move(self, vector):
+        for n in self.nodes:
+            l = self.file_lines[self.beamparameters['nodes']+int(n[0])].split()
+            for i in range(3):
+                n[i+1] = n[i+1] + vector[i]
+                l[i+2] = str(float(l[i+2]) + vector[i])
+                self.file_lines[self.beamparameters['nodes']+int(n[0])] = '\t'.join(l) + '\n'
+
+    def save_line(self, name, path='.'):
+        with open(os.path.join(path, name), 'w') as file:
+            file.writelines(self.file_lines)
+
+
+
+# ================ new API-like part for SAFIR input files ===============
+# vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+class Entity:
+    def __init__(self):
+        self.tag = int
+        self.value = []
+        self.dim = int
+        self.prop = str if self.dim > 0 else None
+
+        #                           node (dim=0)   |  beam (dim=1)    | shell (dim=2)
+        self.load = []  # [Px, Py, Pz, Mx, My, Mz] | [qx, qy, qz]     | [qarea]
+        self.mass = []  # [m1, m2, m3, m4, m5, m6] | [m, rot_inertia] | [mass]
+
+        self.fix = []   # [1 for fixation, 0 for not fixed]
+
+        self.relax = []     # [relxation parameters]
+
+    
+class Entities:
+    def __init__(self):
+        self.dim = int
+        self.entities = []  # list of Entity objects
+        self.taglist = self.dotaglist()
+        self.numlist = self.taglist.values()
+
+        # properties
+        self.proprties = Propeties(self.dim)
+
+
+    # return dictionary of entities with tags as keys
+    def dotagdict(self):
+        tag_dict = {}
+        for e in self.entities:
+            tag_dict[str(e.tag)] = e.value
+
+        return tag_dict
+
+
+class Nodes(Entities):
+    def __init__(self):
+        super().__init__(self)
+        self.dim = 0
+
+
+class Beams(Entities):
+    def __init__(self):
+        super().__init__(self)
+        self.dim = 1
+        self.profiletag = int 
+        # self.relax = {}     # {'tag': [relaxation parameters (float)], ... }
+
+
+class Shells(Entities):
+    def __init__(self):
+        super().__init__(self)
+        self.dim = 2
+        self.vert = 4      # number of vertices (quad elements are default)
+        self.tshtag = int
+
+        # conditions
+        self.frontiers = [None, None, None, None]     # [FUNC1, FUNC2, FUNC3, FUNC4]
+        self.flux = [None, None, None, None]     # [FUNC1, FUNC2, FUNC3, FUNC4]
+        self.temp = [None, None, None, None]     # [FUNC1, FUNC2, FUNC3, FUNC4]
+        self.void = [None, None, None, None]     # [FUNC1, FUNC2, FUNC3, FUNC4]
+        
+
+class Solids(Entities):
+    def __init__(self):
+        super().__init__(self)
+        self.dim = 2
+        self.vert = 8      # number of vertices (hexahedral elements are default)
+        
+        # there should be some temperature constraints also
+
+
+class Geometry:
+    def __init__(self, n=None, b=None, sh=None, sd=None):
+        self.nodes = n
+        self.beams = b
+        self.shells = sh
+        self.solids = sd
+
+        self.profiles = {} # list of profiles {'b': {'profile': [globalmat1, globalmat2 ... ] ... }, 'sh': {...}}
+
+    def read(self, file_lines, dim=None):
+        # read entities form file lines
+        # possible to read only chosen dimensions
+        pass
+    
+    def write(self, file_lines=None, mode=None, dim=None):
+        # return geometry lines entities form file lines
+        # possible to write only chosen dimensions
+        # possible to write (append or replace) geometry in filelines
+        pass
+
+# 
+# class Thermal2D(Properties):
+#     def __init__(self):
+#         super().__init__(self)
+#         self.frontiers = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+#         self.flux = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+#         self.temp = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+# 
+#         
+# 
+# class Thermal3D(Properties):
+#     def __init__(self):
+#         super().__init__(self)
+#         self.frontiers = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+#         self.flux = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+#         self.temp = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+# 
+# 
+# class ThermalTSH(Properties):
+#     def __init__(self):
+#         super().__init__(self)
+#         self.frontiers = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+#         self.flux = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+#         self.temp = {}   # {'TAG':[FUNC1, FUNC2, FUNC3, FUNC4] ... ]
+# 
+# # # class Structural2D(Properites): #     def __init__(self):
+#         super().__init__(self)
+#         self.loads = {}
+#         self.masses = {}
+# 
+# 
+# class Structural3D(Properites):
+#     def __init__(self):
+#         super().__init__(self)
+#         pass
+# 
+
+# to be developed in the future: one material in SAFIR = one class
+class Material:
+    def __init__(self):
+        self.name = str
+        self.parameters = []    # list of parameters required by SAFIR for the Material
+
+
+class NewInFile:
+    def __init__(self, problemtype: str, chid=None, path=None):
+        # file data
+        self.chid = chid if chid else None
+        self.path = path if path else None
+        self.lines = []
+        
+        self.pt = problemtype
+
+        # geometry
+        self.geom = Geometry()
+
+        # simulation
+        self.nfiber = 440   # default GiD number
+        self.time_end = 1800    # default
+        self.algorithm = 1      # 1 for PARDISO, 0 for CHOLESKY
+        self.cores = 1  # valid only if self.algorithm == 1
+        self.description = 'SAFIR simulaion produced with safir_tools.py\nvisit'\
+                            'github.com\kowalskiw\\fireeng-tools for more details'
+        self.materials = [] # list of Material objects
+
+
+
+        
+    def read_lines(self, path):
+        with open(path) as f:
+            self.lines = f.readlines()
+        
+        self.path = path
+        self.chid = '.'.join(os.basename(path).split('.')[:-1])
+
+    def read_sim(self, path=None):
+        p = self.path if not path else path
+        read_lines(p)
+        read_data()
+
+    def read_data(self):
+        pass
+    
+    # save lines to path
+    def write_lines(self, path, update=True):
+        self.update_lines() if update else None
+        with open(path, 'w') as f:
+            f.writelines(self.lines)
+        
+
+    # replace lines with current data
+    def update_lines(self):
+        pass
+
+
+class Thermal2d(NewInFile):
+    def __init__(self):
+        super().__init__(self, 'Thermal2D')
+
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 
 
 # if you want to run a function from this file, add the function name as the first parameter
@@ -289,3 +522,4 @@ if __name__ == '__main__':
         raise Exception("Please provide function name")
     except KeyError:
         raise Exception(f"Function {function} was not found")
+
