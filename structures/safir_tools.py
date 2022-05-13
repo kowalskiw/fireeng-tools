@@ -261,7 +261,7 @@ class InFile:
             if 'ENDTIME' in l:
                 return float(self.file_lines[-i-2].split()[1])
 
-    def get_beamparameters(self):
+    def get_beamparameters(self, update=False):
         """ beamparameters mostly say in which line specific data appears.
                 IMPORTANT! table of data starts from 0 -> lines in notepad will be greater by 1
         """
@@ -286,10 +286,15 @@ class InFile:
                     beamparameters['beamtypes'].append(line[:-5]) 
                 lines+=1
             else:
-                lines+=1
+                #lines+=1
                 beamparameters['elem_start'] = beamparameters['NODOFBEAM'] + lines # ELEM starts
                 break
         beamparameters['beamnumber'] = len(beamparameters['beamtypes'])
+        print(beamparameters['elem_start'], self.file_lines[beamparameters['elem_start']])
+
+        if update:
+            self.beamparameters = beamparameters
+
         return beamparameters
 
     def move(self, vector):

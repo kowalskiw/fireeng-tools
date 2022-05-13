@@ -203,11 +203,11 @@ class MechInFile(safir_tools.InFile):
 
     def add_rows(self):
         """Doubling rows in beamparameters in MechInFile.file_lines and adding 'cfd_' before beam name"""
-        data_add = self.file_lines[self.beamparameters['NODOFBEAM']+1:self.beamparameters['END_TRANS_LAST']]
+        data_add = self.file_lines[self.beamparameters['NODOFBEAM']+1:self.beamparameters['END_TRANS_LAST']+1]
         for num in range(len(data_add)):
-            if data_add[num].endswith('.tem\n'):
+            if '.tem' in data_add[num].lower():
                 data_add[num] = 'cfd_' + data_add[num]
-        self.file_lines.insert(self.end_beams_line, ''.join(data_add))
+        self.file_lines.insert(self.end_beams_line+1, ''.join(data_add))
 
     def double_beam_num(self):
         """Doubling beam number in BEAM line"""
@@ -345,13 +345,14 @@ class Section:
 
     def change_endline_beam_id(self):
         """ need refactorization"""
+        self.beamparams = self.inFileCopy.get_beamparameters(update=True) # update elem_start
         lines = 0
-        for line in self.file_lines[self.beamparams['elem_start']+1:]:
+        for line in self.file_lines[self.beamparams['elem_start']:]:
             elem_data = line.split()
             if 'ELEM' not in line or 'RELAX' in line:
                 break
-            if int(elem_data[1]) in self.elements_inside_domain:
-                actual_line = self.beamparams['elem_start'] + lines + 1
+            elif int(elem_data[1]) in self.elements_inside_domain:
+                actual_line = self.beamparams['elem_start'] + lines 
                 new_beam_number = int(elem_data[-1]) + self.beamparams['beamnumber']
 
                 # add the beam type to be calculated
