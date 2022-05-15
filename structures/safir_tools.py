@@ -290,7 +290,6 @@ class InFile:
                 beamparameters['elem_start'] = beamparameters['NODOFBEAM'] + lines # ELEM starts
                 break
         beamparameters['beamnumber'] = len(beamparameters['beamtypes'])
-        print(beamparameters['elem_start'], self.file_lines[beamparameters['elem_start']])
 
         if update:
             self.beamparameters = beamparameters
