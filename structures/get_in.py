@@ -4,10 +4,12 @@ from sys import argv
 
 if len(argv) > 1:
     config_dir = argv[1]
+    extension = argv[2]
 else:
     config_dir = '.'
+    extension = 'in'
     
-ins_path = '{}\ins'.format(config_dir)
+ins_path = '{}\{}s'.format(config_dir, extension)
 try:
     mkdir(ins_path)
 except FileExistsError:
@@ -16,5 +18,5 @@ except FileExistsError:
 
 for d in scandir():
     if '.gid' in d.name:
-        in_path = '{}\{}\{}.in'.format(config_dir, d.name, d.name.split('.gid')[0])
+        in_path = '{}\{}\{}.{}'.format(config_dir, d.name, d.name.split('.gid')[0], extension)
         cp(in_path, ins_path)
