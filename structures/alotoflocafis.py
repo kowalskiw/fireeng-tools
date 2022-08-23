@@ -155,17 +155,24 @@ class TendToFireWithLOCAFI:
         norigin = np.array(self.origin)
         sortd = []
         latest = 1e90
-        raw = locations_dxf(self.config.localization)
+        raw = locations_dxf(self.config.location)
+        # wrong code beneath
         for c in raw:
             nc = np.array(c)
             dist = np.sqrt(np.sum((norigin - nc) ** 2, axis=0))
-            if dist < latest:
-                latest = dist
-                sortd.insert(0, c)
-            else:
-                sortd.append(c)
 
-        return sortd
+            sort_index = -1
+            if sortd:
+                for i, r in enumerate(sortd):
+                    if dist < r[0]:
+                        sort_index = i
+                        break
+            sortd.insert(sort_index, [dist, c]) if sort_index >= 0 else sortd.append([dist, c])
+        
+        print('\nNo.  [distance, [x, y, z]]')
+        [print(i, j) for i, j in enumerate(sortd)]
+
+        return [i[1] for i in sortd]
 
     '''shift the beginning of RHR or diameter string table to the starttime'''
 
@@ -284,6 +291,17 @@ class TendToFireWithLOCAFI:
         # plt.show()
         plt.savefig('locafi_script.png')
         print('[OK] figure saved')
+    
+    def locations_chart(self):
+        fig = plt.figure()
+        fig.suptitle('Fire locations')
+        ax = fig.add_subplot(1, 1, 1)
+        x, y, z = zip(*self.possible_locations)
+        
+        ax.scatter(x, y)
+        ax.grid()
+        [ax.annotate(str(i), (x[i], y[i])) for i in range(len(self.possible_locations))]
+        plt.savefig('fire_locations.png')
 
     '''trying to achieve better correlation with lim fire curve by modifying the analytical equation - poor method'''
 
@@ -584,9 +602,9 @@ if __name__ == '__main__':
     def get_arguments(from_argv):
         parser = ar.ArgumentParser(description='Adjust times to ignition of multiple fires to achieve given fire curve')
 
-        parser.add_argument('-l', '--localization', help='Path to DXF file with fire localization points',
+        parser.add_argument('-l', '--location', help='Path to DXF file with fire location points',
                             required=True)
-        parser.add_argument('-a', '--alpha', type=float, help='Summary fire growth factor (to tend to)', required=True)
+        parser.add_argument('-a', '--alpha', type=float, help='Summary fire growth factor (to tend to)', required=False)
         parser.add_argument('-f', '--fire', help='Path to single fire file', default='./locafi.txt')
         parser.add_argument('-c', '--config', help='Path to configuration file', default=None)
         parser.add_argument('-o', '--optimization', help='Optimization routine [iter/coeff]', default=None)
@@ -613,7 +631,7 @@ if __name__ == '__main__':
     if args.config:  # if you use config file
         config = import_config(args.config)
         try:
-            args.alpha = config['alpha']
+            args.alpha = float(config['alpha'])
         except KeyError:
             pass
         try:
@@ -668,3 +686,5 @@ if __name__ == '__main__':
     a.make_lcfs()
     a.time_step = 10    # adjusting charts start time
     a.rhr_charts()
+    a.locations_chart()
+
