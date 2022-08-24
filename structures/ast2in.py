@@ -4,8 +4,7 @@ from os.path import join as pjoin
 from os import scandir
 from sys import argv
 
-import structures.safir_tools
-from structures import safir_tools as st
+import safir_tools as st
 import numpy as np
 import csv
 
@@ -319,7 +318,7 @@ class Calculate4AST:
                 ext = spltd[-1]
 
             if ext.lower() == 'in' and f'{chid}.tem' in [nbt[0] for nbt in self.newbeamtypes]:
-                structures.safir_tools.run_safir(i.path, safir_exe_path=safir_path, fix_rlx=False)
+                st.run_safir(i.path, safir_exe_path=safir_path, fix_rlx=False)
 
 
 def move(infile_path, vector):

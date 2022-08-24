@@ -228,6 +228,8 @@ class InFile:
 
         self.t_end = self.get_time()
 
+        self.materials = self.get_materials()
+
     # import entities
     def get(self, entity_type):
         got = []
@@ -360,6 +362,27 @@ class InFile:
                 trusses.append([spltd[0], *[float(i) for i in spltd[1:-1]], int(spltd[-1])])
 
         return beams, shells, trusses
+
+    def get_materials(self):
+        materials = []      # [['mat1name', [par1, ..., parn], ...]
+        m = []
+        r = False
+        for line in reversed(self.file_lines):
+            if r:
+                spltd = line.split()
+                if len(spltd) > 1:
+                    m.append([float(p) for p in spltd])
+                elif len(spltd) == 1:
+                    if spltd[0] == 'MATERIALS':
+                        return materials
+                    m.insert(0, spltd[0])
+                    materials.append(m)
+                    m = []
+                else:
+                    continue
+
+            elif all(['TIME' in line, 'TIMEPRINT' not in line, 'END' not in line]):
+                r = True
 
     def move(self, vector):
         for n in self.nodes:
