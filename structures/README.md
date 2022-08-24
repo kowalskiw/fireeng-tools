@@ -6,7 +6,7 @@ Those scripts are not a part of the software. Nevertheless, some can be used gen
 
 * `safir_tools.py` - pre- and postprocessing of SAFIR® simulations
 
-* `get_in.py` - picking IN files from GiD catalogues and putting them into one directory
+* `get_in.py` - picking files with given extension (IN by default) from GiD catalogues and putting them into one directory
 
 * `section_temp.py` - calculating mean temperature from TEM results
 
@@ -22,6 +22,11 @@ Those scripts are not a part of the software. Nevertheless, some can be used gen
 
 * `alotofloacfis.py` - adjusting ignition times of multiple localized fires to tend to given summary HRR curve
 
+* `eliminate.py` - replacing BEAM element to non-loadbearing using INSULATION material
+
+* `ast2in.py` - handling transfer of thermal attack data from FDS adiabatic surface temperature devices to SAFIR®
+
+Full documentation will be available soon...
 
 Link to SAFIR® official website: https://www.uee.uliege.be/cms/c_4016386/en/safir
 
