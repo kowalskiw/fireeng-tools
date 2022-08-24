@@ -215,10 +215,16 @@ class InFile:
         self.chid = chid
         self.type = 'type_of_analysis'
         self.nodes = self.get(0)
+        self.trusses = self.get(0.5)
         self.beams = self.get(1)
         self.shells = self.get(2)
         self.solids = self.get(3)
         self.beamparameters = self.get_beamparameters()
+
+        # [['profilename.tsh', [material1no, ... materialnno]]]
+        # [['profilename.tem', [material1no, ... materialnno]]]
+        # ['tempcurve.txt', area, initial_stress, materialno]
+        self.beamtypes, self.shelltypes, self.trusstypes = self.get_types()
 
         self.t_end = self.get_time()
 
@@ -230,14 +236,17 @@ class InFile:
         if entity_type in ['node', 'nodes', 'n', 0]:
             keys = ['NODES', 'NODE', ['FIXATIONS']]
             entity_type = 0
+        elif entity_type in ['truss', 'trusses', 't', 0.5]:
+            keys = ['NODOFTRUSS', 'ELEM', ['NODOFBEAM', 'NODOFSHELL', 'NODOFSOLID', 'PRECISION', 'RELAX_ELEM']]
+            entity_type = 0.5
         elif entity_type in ['beam', 'beams', 'b', 1]:
-            keys = ['NODOFBEAM', 'ELEM', ['NODOFSHELL', 'NODOFSOLID', 'PRECISION', 'RELAX_ELEM']]
+            keys = ['NODOFBEAM', 'ELEM', ['NODOFTRUSS', 'NODOFSHELL', 'NODOFSOLID', 'PRECISION', 'RELAX_ELEM']]
             entity_type = 1
         elif entity_type in ['shell', 'shells', 'sh', 2]:
-            keys = ['NODOFSHELL', 'ELEM', ['NODOFBEAM', 'NODOFSOLID', 'PRECISION', 'RELAX_ELEM']]
+            keys = ['NODOFSHELL', 'ELEM', ['NODOFTRUSS', 'NODOFBEAM', 'NODOFSOLID', 'PRECISION', 'RELAX_ELEM']]
             entity_type = 2
         elif entity_type in ['solid', 'solids', 'sd', 3]:
-            keys = ['NODOFSOLID', 'ELEM', ['NODOFBEAM', 'NODOFSHELL', 'PRECISION', 'RELAX_ELEM']]
+            keys = ['NODOFSOLID', 'ELEM', ['NODOFTRUSS', 'NODOFBEAM', 'NODOFSHELL', 'PRECISION', 'RELAX_ELEM']]
             entity_type = 3
 
         read = False
@@ -295,6 +304,62 @@ class InFile:
             self.beamparameters = beamparameters
 
         return beamparameters
+
+    def get_types(self):
+        check = [-1, -1, -1]
+        beams = []
+        shells = []
+        trusses = []
+
+        read = -1
+        b = []
+        sh = []
+        for line in self.file_lines:
+            if 'BEAM' in line and check[0] >= 0:
+                check[0] = int(line.split()[-1])
+            elif 'SHELL' in line and not check[1] >= 0:
+                check[1] = int(line.split()[-1])
+            elif 'TRUSS' in line and not check[2] >= 0:
+                check[2] = int(line.split()[-1])
+
+            elif 'NODOFBEAM' in line:
+                read = 0
+            elif 'NODOFSHELL' in line:
+                read = 1
+            elif 'NODOFTRUSS' in line:
+                read = 2
+
+            # read beamtypes
+            elif read == 0:
+                if 'tem' in line.lower():
+                    b = [line.split()[0], []]
+                elif 'TRANSLATE' in line:
+                    b[1].append(line.split()[-1])
+                elif 'END_TRANS' in line:
+                    beams.append(b)
+                elif 'ELEM' in line:
+                    read = -1
+
+            # read shelltypes
+            elif read == 1:
+                if 'tsh' in line.lower():
+                    sh = [line.split()[0], []]
+                elif 'TRANSLATE' in line:
+                    sh[1].append(line.split()[-1])
+                elif 'END_TRANS' in line:
+                    shells.append(sh)
+                elif 'ELEM' in line:
+                    read = -1
+
+            # read trusstypes
+            elif read == 2:
+                if 'ELEM' in line:
+                    read = -1
+                    continue
+                spltd = line.split()
+                trusses.append([spltd[0], *[float(i) for i in spltd[1:-1]], int(spltd[-1])])
+
+        return beams, shells, trusses
 
     def move(self, vector):
         for n in self.nodes:
@@ -526,4 +591,3 @@ if __name__ == '__main__':
         raise Exception("Please provide function name")
     except KeyError:
         raise Exception(f"Function {function} was not found")
-
