@@ -614,3 +614,4 @@ if __name__ == '__main__':
         raise Exception("Please provide function name")
     except KeyError:
         raise Exception(f"Function {function} was not found")
+

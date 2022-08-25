@@ -7,7 +7,6 @@ import argparse as ar
 import json
 from file_read_backwards import FileReadBackwards as frb
 from decimal import Decimal as dec
-#from plot_test import DomainPlot
 
 
 class ManyCfds:
@@ -36,6 +35,7 @@ class ManyCfds:
         self.run_sections()
         self.get_all_elements(self.mechinfile)
         self.save_json()
+
         self.victory()
 
     def gid_structure_bool(self):
@@ -57,6 +57,7 @@ class ManyCfds:
                 except FileNotFoundError as e:
                     print(e)
                     sys.exit(1)
+
         else:
             for beam in self.beamtypes:
                 try:
@@ -119,7 +120,6 @@ class ThermInFile:
         self.thermal_in_file = thermal_in_file
         self.mechinfile = mechinfile
         self.beamtypes = self.mechinfile.beamparameters['beamtypes']
-
 
     def change_in(self):
         """
@@ -347,10 +347,11 @@ class Section:
         """ need refactorization"""
         self.beamparams = self.inFileCopy.get_beamparameters(update=True) # update elem_start
         lines = 0
-        for line in self.file_lines[self.beamparams['elem_start']:]:
+        for line in self.file_lines[self.beamparams['elem_start']+1:]:
             elem_data = line.split()
             if 'ELEM' not in line or 'RELAX' in line:
                 break
+
             elif int(elem_data[1]) in self.elements_inside_domain:
                 actual_line = self.beamparams['elem_start'] + lines 
                 new_beam_number = int(elem_data[-1]) + self.beamparams['beamnumber']
@@ -402,10 +403,10 @@ class Section:
         last_node_coor = self.inFile.nodes[last_node_id - 1][1:]
         return first_node_coor, last_node_coor
 
+
 """  as a parameter  """
 
 class TransferDomain:
-
     def __init__(self, transfer_file):
         self.transfer_file = transfer_file
         self.domain = self.find_transfer_domain()

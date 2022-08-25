@@ -4,11 +4,11 @@ from sys import argv
 
 if len(argv) > 1:
     config_dir = argv[1]
+    extension = argv[2]
 else:
     config_dir = '.'
-
-extension = input('give me extension: ')
-
+    extension = 'in'
+    
 ins_path = '{}\{}s'.format(config_dir, extension)
 try:
     mkdir(ins_path)
