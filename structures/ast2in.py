@@ -26,7 +26,9 @@ class AST:
 
         with open(f'{chid}_devc.csv') as f:
             self.csvfile = [i for i in csv.reader(f)][1:]
-
+            
+        self.locations = self.get_locs()
+        
     def find_devcs(self):
         devc = []
         for l in self.fdsfile:
@@ -119,7 +121,7 @@ class Calculate4AST:
         mids = []
         if enttype == 'b':
             for b in self.infile.beams:
-                mids.append(self.infile.nodes[b[0] - 1][1:])
+                mids.append(self.infile.nodes[b[2] - 1][1:])    # middle node tag of the BEAM element is b[2]
         elif enttype == 't':
             for t in self.infile.trusses:
                 truss_points = [np.array(self.infile.nodes[t[i]-1][1:]) for i in [0, 1]]
@@ -137,7 +139,7 @@ class Calculate4AST:
 
         asttag = ''
         min_dist = 1e9
-        all_asts = self.asts.get_locs()
+        all_asts = self.asts.locations
 
         for ak, av in all_asts.items():
             actual_dist = what_dist(point, av)
