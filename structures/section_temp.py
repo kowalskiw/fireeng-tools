@@ -2,6 +2,7 @@ from sys import argv
 import argparse
 import numpy as np
 import xml.etree.ElementTree as ET
+import matplotlib.pyplot as plt
 
 
 # args: use -h flag to get some help
@@ -14,6 +15,7 @@ class ReadXML:
         self.steel_nmat = []
         self.temperatures = {}
         self.check_if_t2d(path2xml.split('/')[-1])
+        self.steel_nodes = []
 
     def check_if_t2d(self, name):
         for n in self.data.iter('NDIM'):
@@ -78,27 +80,33 @@ class ReadXML:
 
 
 class Statistics:
-    def __init__(self, temp_data, nodes=None):
+    def __init__(self, temp_data, nodes=None, plot=False):
         self.data = temp_data   # {timestep[s]: [temp_node1, ... temp_nodeN], ...}
         self.nodes = nodes  # None if aritmetic: a_1 = 1 and a_{n+1} = a_n + 1
+        self.print = True
+        self.plot = plot
 
-    def _stat_return(self, function, xy, prnt=True, plot=False):
+    def _stat_return(self, function):
         # calculate stat
         tab = {}
         for time, vals in self.data.items():
             tab[time] = function(vals)
 
         # print 
-        if prnt:
+        if self.print:
             print_data2(tab)
 
         # plot
-        if plot:
+        if self.plot:
+            xes = []
+            yes = []
+            for x, y in tab.items():
+                xes.append(x)
+                yes.append(y)
             # include plotting methods
-            pass
+            plot(xes,yes)
 
         # return
-        if xy:
             xes = []
             yes = []
             for x, y in tab.items():
@@ -109,23 +117,23 @@ class Statistics:
             return tab
 
 
-    def mean(self, xy=False):
+    def mean(self):
         print('[INFO] Mean temperatures')
         lmean = lambda x: round(np.mean(x), 2)
 
-        return self._stat_return(lmean, xy)
+        return self._stat_return(lmean)
 
-    def min(self, xy=False):
+    def min(self):
         print('[INFO] Minimum temperatures')
         lmin = lambda x: min(x)
 
-        return self._stat_return(lmin, xy)
+        return self._stat_return(lmin)
 
-    def max(self, xy=False):
+    def max(self):
         print('[INFO] Maximum temperatures')
         lmax = lambda x: max(x)
 
-        return self._stat_return(lmax, xy)
+        return self._stat_return(lmax)
 
     def all_stats(self):
         stats = {}
@@ -136,10 +144,8 @@ class Statistics:
         return stats
     
     def plot_all(self):
-        pass
-
-    def print_all(self):
-        pass
+        self.plot=True
+        self.all_stats()
 
     
 
@@ -163,6 +169,16 @@ def print_data2(ddict):
     else:
         print('Critical temperature has not been reached in the table')
     print('==============================================================')
+
+
+def plot(x, y):
+    fig, ax = plt.subplots()
+    ax.plot(x, y, label='steel temperature')
+    ax.plot(x, len(x)*[temp_crit], color='red', linestyle='dashed', label='critical temperature')
+    ax.set(xlabel='Time, [s]', ylabel='Temperature, [°C]', title='Steel temperature in fire')
+    ax.grid()
+    ax.legend()
+    plt.show()
 
 
 
@@ -324,6 +340,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--tem', help='Read results from TEM file (obsolete)', default=False, action='store_true')
     parser.add_argument('-f', '--file', help='Path to results file', required=True)
     parser.add_argument('-c', '--critical',type=float, help='Critical temperature [°C]', required=True)
+    parser.add_argument('-p', '--plot', help='Plot chart of temperatures', default=False, action='store_true')
 
     args = parser.parse_args()
 
@@ -333,7 +350,7 @@ if __name__ == '__main__':
         raise TypeError('Specify only one mode (-x OR -t). Use -h for help.')
     elif args.xml:
         rx = ReadXML(args.file)
-        s = Statistics(rx.load_temps())
+        s = Statistics(rx.load_temps(), rx.steel_nodes, plot=args.plot)
         s.all_stats()
     elif args.tem:
         [print_data(data[1], data[0]) for data in [('min temperature', min_temp(args.file)),
