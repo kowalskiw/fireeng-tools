@@ -4,8 +4,8 @@ import numpy as np
 import xml.etree.ElementTree as ET
 
 
-# args: path to TEM file, critical temperature
-# e.g. "python section_temp.py d:\my_sim.gid\hea180.tem 540"
+# args: use -h flag to get some help
+# e.g. "python section_temp.py -f d:\my_sim.gid\hea180.tem -c 540 -x"
 
 class ReadXML:
     def __init__(self, path2xml, amb_temp=20):
