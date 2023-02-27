@@ -41,7 +41,6 @@ def copy_files(working_directory_path, config_directory, extensions):
     """
     for directory in scandir(working_directory_path):
         for extension in extensions:
-            print(f"{extension=}")
             if '.gid' in directory.name:
                 in_path = f"{working_directory_path}\{directory.name}\{directory.name.split('.gid')[0]}.{extension}"
                 if extension == "T0R":
