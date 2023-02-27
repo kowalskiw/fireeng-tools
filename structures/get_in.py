@@ -13,8 +13,17 @@ def get_dirs_and_extensions_from_args():
     """
     if len(argv) > 1:
         extensions = []
+
+        split_arg1 = argv[1].split('"') # to handle spaces in file paths by detecting \' in the end of the folder path
+        # then both the folder path and the rest of the arguments are considered as a one argument
+        # there is also a need to split the rest of the arguments (extesnions)
+
         if exists(abspath(argv[1])):
             working_directory_path = abspath(argv[1]) 
+        elif exists(abspath(split_arg1[0])):
+            working_directory_path = abspath(split_arg1[0])
+            for arg in split_arg1[1].split(" ")[1:]:
+                extensions.append(arg)
         else: 
             working_directory_path = '.'
             extensions.append(argv[1])
