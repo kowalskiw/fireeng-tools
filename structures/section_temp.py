@@ -1,4 +1,5 @@
 from sys import argv
+from os import path, scandir
 import argparse
 import numpy as np
 import xml.etree.ElementTree as ET
@@ -6,7 +7,7 @@ import matplotlib.pyplot as plt
 
 
 # args: use -h flag to get some help
-# e.g. "python section_temp.py -f d:\my_sim.gid\hea180.tem -c 540 -x"
+# e.g. "python section_temp.py -f d:\my_sim.gid\hea180.XML -c 540 -x"
 
 class ReadXML:
     def __init__(self, path2xml, amb_temp=20):
@@ -86,25 +87,24 @@ class Statistics:
         self.print = True
         self.plot = plot
 
-    def _stat_return(self, function):
+    def _stat_return(self, function, plot=False):
         # calculate stat
         tab = {}
         for time, vals in self.data.items():
             tab[time] = function(vals)
 
         # print 
-        if self.print:
-            print_data2(tab)
+        crittime = print_data2(tab) if self.print else None
 
         # plot
-        if self.plot:
+        if plot:
             xes = []
             yes = []
             for x, y in tab.items():
                 xes.append(x)
                 yes.append(y)
             # include plotting methods
-            plot(xes,yes)
+            plotting(xes,yes, crtime=crittime)
 
         # return
             xes = []
@@ -120,20 +120,23 @@ class Statistics:
     def mean(self):
         print('[INFO] Mean temperatures')
         lmean = lambda x: round(np.mean(x), 2)
+        p = True if any([i in ('mean', 'all') for i in self.plot]) else False
 
-        return self._stat_return(lmean)
+        return self._stat_return(lmean, plot=p)
 
     def min(self):
         print('[INFO] Minimum temperatures')
         lmin = lambda x: min(x)
+        p = True if any([i in ('min', 'all') for i in self.plot]) else False
 
-        return self._stat_return(lmin)
+        return self._stat_return(lmin, plot=p)
 
     def max(self):
         print('[INFO] Maximum temperatures')
         lmax = lambda x: max(x)
+        p = True if any([i in ('max', 'all') for i in self.plot]) else False
 
-        return self._stat_return(lmax)
+        return self._stat_return(lmax, plot=p)
 
     def all_stats(self):
         stats = {}
@@ -166,15 +169,23 @@ def print_data2(ddict):
         crittime = round(np.interp(temp_crit, temps, times))
 
         print(f'Critical temperature in the table was exceeded at {crittime} s (interpolated)')
+        return crittime
     else:
         print('Critical temperature has not been reached in the table')
+        return None
     print('==============================================================')
 
 
-def plot(x, y):
+def plotting(x, y, crtime):
     fig, ax = plt.subplots()
+
     ax.plot(x, y, label='steel temperature')
     ax.plot(x, len(x)*[temp_crit], color='red', linestyle='dashed', label='critical temperature')
+    if rset:
+        ax.plot(len(y)*[rset], y, color='green', linestyle='dashed', label='RSET')
+
+    if crtime:
+        ax.annotate(f'Temperature: {temp_crit}°C \nTime: {crtime} s', xy=(crtime, temp_crit), xytext=(crtime-100, temp_crit+50), arrowprops=dict(arrowstyle='-|>', fc='black'), bbox=dict(boxstyle='square', fc=(0.1,0.1,0.1,0.1)))
     ax.set(xlabel='Time, [s]', ylabel='Temperature, [°C]', title='Steel temperature in fire')
     ax.grid()
     ax.legend()
@@ -336,25 +347,43 @@ def print_data(temp_array, title):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Section temperatures from SAFIR by kowalskiw')
-    parser.add_argument('-x', '--xml', help='Read results from XML file', default=True, action='store_true')
-    parser.add_argument('-t', '--tem', help='Read results from TEM file (obsolete)', default=False, action='store_true')
-    parser.add_argument('-f', '--file', help='Path to results file', required=True)
-    parser.add_argument('-c', '--critical',type=float, help='Critical temperature [°C]', required=True)
-    parser.add_argument('-p', '--plot', help='Plot chart of temperatures', default=False, action='store_true')
+    parser.add_argument('-x', '--xml', help='Path to XML results file', type=str)
+    parser.add_argument('-t', '--tem', help='Path to TEM results file (obsolete)', type=str)
+    parser.add_argument('-c', '--critical',type=float, help='Critical temperature (threshold value) [°C]', required=True)
+    parser.add_argument('-p', '--plot', help='Plot chart of temperatures: "min", "mean", "max" or "all"', action='extend', nargs='+', type=str)
+    parser.add_argument('-r', '--rset',type=float, help='Required Safe Egress Time [s]')
 
     args = parser.parse_args()
 
     temp_crit = args.critical
+    rset = args.rset
 
+    paths = []
     if args.xml and args.tem:
         raise TypeError('Specify only one mode (-x OR -t). Use -h for help.')
+    elif not args.xml and not args.tem:
+        raise ValueError('Give the file path with proper flag (-x OR -t). Use -h for help.')
     elif args.xml:
-        rx = ReadXML(args.file)
-        s = Statistics(rx.load_temps(), rx.steel_nodes, plot=args.plot)
-        s.all_stats()
+        if path.isdir(args.xml):
+            for s in scandir(args.xml):
+                if s.name.lower().endswith('xml'):
+                    paths.append(s.path)
+        else:
+            paths = [args.xml]
+        for f in paths:
+            rx = ReadXML(f)
+            s = Statistics(rx.load_temps(), rx.steel_nodes, plot=args.plot)
+            s.all_stats()
     elif args.tem:
-        [print_data(data[1], data[0]) for data in [('min temperature', min_temp(args.file)),
-                                                   ('mean temperature', mean_temp(args.file)),
-                                                   ('max temperature', max_temp(args.file))]]
+        if path.isdir(args.tem):
+            for s in scandir(args.tem):
+                if s.name.lower().endswith('tem'):
+                    paths.append(s.path)
+        else:
+            paths = [args.tem]
+        for f in paths:
+            [print_data(data[1], data[0]) for data in [('min temperature', min_temp(f)),
+                                                       ('mean temperature', mean_temp(f)),
+                                                       ('max temperature', max_temp(f))]]
 
 
