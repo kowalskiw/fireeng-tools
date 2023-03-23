@@ -8,9 +8,14 @@ from xml.dom.minidom import parse as pxml
 from xml.etree import ElementTree
 from os.path import dirname, basename, abspath, exists
 
+from file_read_backwards import FileReadBackwards as frb
+
+
+
+### USEFUL FUNCTIONS TO BE USED WITH SAFIR ###
 
 def repair_relax_in_xml(xml_file_path):
-    """Modifies relaxations in the XML output file to the correct format for Diamond"""
+    """Modifying relaxations in the XML output file to the correct format for Diamond"""
     # Check if there is </SAFIR_RESULTS> at the end of the file
 
     # Currently works only for beams
@@ -30,8 +35,8 @@ def repair_relax_in_xml(xml_file_path):
     print(f"[OK] Changes written to the {basename(xml_file_path)} file")
 
 
-# running SAFIR simulation
 def run_safir(in_file_path, safir_exe_path='safir', print_time=True, fix_rlx=True, verbose=False, wine=False, key=None):
+    '''Running SAFIR simulation with clear output under Linux or Windows'''
     start = dt.now()
     backpath = getcwd()
     dirpath = dirname(in_file_path)
@@ -96,6 +101,7 @@ def run_safir(in_file_path, safir_exe_path='safir', print_time=True, fix_rlx=Tru
 
 
 def repair_relax(path_to_xml, copyxml=True, verb=True):
+    '''Modifying relaxations in the XML output file to the correct format for Diamond --- no xml packages'''
     rlx_lines = []
     index = 0
     fixed = 0
@@ -118,11 +124,49 @@ def repair_relax(path_to_xml, copyxml=True, verb=True):
     return 0
 
 
-# move all nodes with a given vector
 def move_in(infile_path, x, y, z):
+    '''Moving the model with given vector'''
     infile = read_in(infile_path)
     infile.move([float(i) for i in [x, y, z]])
     infile.save_line(f'{infile.chid}_moved.in')
+    print(f'[OK] Model moved with ({x}, {y}, {z}) vector')
+
+
+def preview(xmlfile_path):
+    '''Preview of XML results while calculation process is not finished yet'''
+
+    temp_xml_lines = ['</SAFIR_RESULTS>\n']
+    last_step = 0
+    do_write = False
+
+    i = 0
+    with frb(xmlfile_path, encoding='utf-8') as backward:
+        for l in backward:
+            print(f'Reading line {i} of original XML file...', end='\r')
+            if 'RLX' in l:  #prevent relaxations bug
+                temp_xml_lines.insert(0, '0'.join('-1'.join(line.split('-0.100E+01')).split('0.000E+00')))
+            if do_write:
+                temp_xml_lines.insert(0, l+'\n')
+                if 'TIME' in l and last_step == 0:
+                    #<TIME format="F14.5">      13.00000</TIME>
+                    last_step = float(l[21:-7])
+
+            elif 'STEP' in l:
+                do_write = True
+            i+=1
+
+    with open(f'{xmlfile_path[:-4]}_{last_step}.xml', 'w') as newxml:
+        print(f'Saving {xmlfile_path[:-4]}_{last_step}.xml file...', end='\r')
+        newxml.writelines(temp_xml_lines)
+
+    print(f'[OK] Results preview at {last_step} s ready!')
+
+    return 0
+    
+
+
+
+#### ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ####
 
 
 # call functions to read single parts of results file

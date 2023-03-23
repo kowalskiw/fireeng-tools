@@ -347,8 +347,8 @@ def print_data(temp_array, title):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Section temperatures from SAFIR by kowalskiw')
-    parser.add_argument('-x', '--xml', help='Path to XML results file', type=str)
-    parser.add_argument('-t', '--tem', help='Path to TEM results file (obsolete)', type=str)
+    parser.add_argument('-x', '--xml', help='Path to XML results file or directory', type=str)
+    parser.add_argument('-t', '--tem', help='Path to TEM results file or directory (obsolete)', type=str)
     parser.add_argument('-c', '--critical',type=float, help='Critical temperature (threshold value) [°C]', required=True)
     parser.add_argument('-p', '--plot', help='Plot chart of temperatures: "min", "mean", "max" or "all"', action='extend', nargs='+', type=str)
     parser.add_argument('-r', '--rset',type=float, help='Required Safe Egress Time [s]')

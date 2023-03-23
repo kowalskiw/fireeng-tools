@@ -4,27 +4,28 @@ Simple tools for fire structural engineering, which makes the design process eas
 Most of them are intended to be used with SAFIR® - fire structural code by University of Liege, Belgium.
 Those scripts are not a part of the software. Nevertheless, some can be used generally to structural fire modelling.
 
-* `safir_tools.py` - pre- and postprocessing of SAFIR® simulations
+* `area2lineload.py` - numerical conversion of area load to distributed line load on beam (1D) elements (experimental)
 
-* `get_in.py` - picking files with given extension (IN by default) from GiD catalogues and putting them into one directory
+* `alotofloacfis.py` - adjusting ignition times of multiple localized fires to tend to given summary HRR curve (experimental)
 
-* `section_temp.py` - calculating mean temperature from TEM results
+* `ast2in.py` - transfer of Adiabatic Surface Temperature devices from Fire Dynamics Simulator to SAFIR® beam (1D) elements
 
-* `area2lineload.py` - changing area load to distributed beam load
+* `eliminate.py` - replacing given BEAM element to non-loadbearing using INSULATION material
 
-* `iso2nf.py` - converting ISO heating to natural fire (LOCAFI, HASEMI, CFD), running natural fire simulations for BEAM and SHELL elements
+* `from_gid.py` - picking files of specified extension (-1.T0R by default) from GiD catalogues and putting them together into one directory
+
+* `iso2nf.py` - converting ISO heating to natural fire (LOCAFI, HASEMI, CFD) and then running thermal and structural calculations (supporting BEAM and SHELL elements)
+
+* `manycfds.py` - thermal calculation when more than one CFD transfer file is used (experimental)
+
+* `part_radf.py` - repairing FDS transfer files (&RADF product) when FDS calculation is still in progress or when it has been stopped before T_RADF_END
+
+* `safir_tools.py` - pre- and postprocessing of SAFIR® simulations, moreover some useful functions can be found there
+
+* `section_temp.py` - simple postprocess of 2D thermal results 
 
 * `uneven_loads.py` - assigning uneven loads to SHELL elements
 
-* `manycfds.py` - calculating thermal response with more than one CFD transfer file
-
-* `part_radf.py` - adjusting FDS transfer files (&RADF product) if FDS calculation has been stopped before T_RADF_END
-
-* `alotofloacfis.py` - adjusting ignition times of multiple localized fires to tend to given summary HRR curve
-
-* `eliminate.py` - replacing BEAM element to non-loadbearing using INSULATION material
-
-* `ast2in.py` - handling transfer of thermal attack data from FDS adiabatic surface temperature devices to SAFIR®
 
 Full documentation will be available soon...
 
