@@ -32,7 +32,7 @@ class ManyCfds:
         self.copy_files()  # copying sections with adding 'cfd_' prefix
         self.get_all_transfer_files()
         self.change_in_for_infiles()
-        self.run_sections()
+        self.run_sections() # running calculations for each section (transfer domain)
         self.get_all_elements(self.mechinfile)
         self.save_json()
 
@@ -244,6 +244,8 @@ class Section:
         self.domain = TransferDomain(self.transfer_file).find_transfer_domain()
         self.copy_to_working_dir()
         self.elements_inside_domain = self.find_elements_inside_domain(self.inFileCopy)
+        if not self.elements_inside_domain:
+            return 1
         self.change_endline_beam_id()
         self.save_as_dummy()
         self.run_safir_for_all_thermal()
