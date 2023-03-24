@@ -81,13 +81,14 @@ class ReadXML:
 
 
 class Statistics:
-    def __init__(self, temp_data, nodes=None, plot=False):
+    def __init__(self, temp_data, nodes=None, plot=False, save=None):
         self.data = temp_data   # {timestep[s]: [temp_node1, ... temp_nodeN], ...}
         self.nodes = nodes  # None if aritmetic: a_1 = 1 and a_{n+1} = a_n + 1
         self.print = True
         self.plot = plot
+        self.save = save
 
-    def _stat_return(self, function, plot=False):
+    def _stat_return(self, function, plot=False, name=None):
         # calculate stat
         tab = {}
         for time, vals in self.data.items():
@@ -104,7 +105,11 @@ class Statistics:
                 xes.append(x)
                 yes.append(y)
             # include plotting methods
-            plotting(xes,yes, crtime=crittime)
+            if self.save:
+                plotting(xes,yes, crtime=crittime, save=f'{self.save}_{name}.png')
+            else:
+                plotting(xes,yes, crtime=crittime)
+
 
         # return
             xes = []
@@ -122,21 +127,21 @@ class Statistics:
         lmean = lambda x: round(np.mean(x), 2)
         p = True if any([i in ('mean', 'all') for i in self.plot]) else False
 
-        return self._stat_return(lmean, plot=p)
+        return self._stat_return(lmean, plot=p, name='mean')
 
     def min(self):
         print('[INFO] Minimum temperatures')
         lmin = lambda x: min(x)
         p = True if any([i in ('min', 'all') for i in self.plot]) else False
 
-        return self._stat_return(lmin, plot=p)
+        return self._stat_return(lmin, plot=p, name='min')
 
     def max(self):
         print('[INFO] Maximum temperatures')
         lmax = lambda x: max(x)
         p = True if any([i in ('max', 'all') for i in self.plot]) else False
 
-        return self._stat_return(lmax, plot=p)
+        return self._stat_return(lmax, plot=p, name='max')
 
     def all_stats(self):
         stats = {}
@@ -155,19 +160,25 @@ class Statistics:
 def print_data2(ddict):
     times = list(ddict)
     temps = list(ddict.values())
+    last_step = [None, None]
+    crittime = -1
 
     print('_____________________________')
     print('Time, [s] | Temperature, [°C]')
     print('----------|------------------')
     for time, temp in ddict.items():
+        if temp > temp_crit and crittime < 0:
+            crittime = round(np.interp(temp_crit, [last_step[1], temp], [last_step[0], time]))
+        else:
+            last_step = [time, temp]
+
         print(time, ' '*(8-len(str(time))), '|', temp)
+
     print('-----------------------------')
 
     print(f'Max temperature in the table: {round(max(temps), 1)}')
 
-    if max(temps) > temp_crit:
-        crittime = round(np.interp(temp_crit, temps, times))
-
+    if crittime > 0:
         print(f'Critical temperature in the table was exceeded at {crittime} s (interpolated)')
         return crittime
     else:
@@ -176,20 +187,30 @@ def print_data2(ddict):
     print('==============================================================')
 
 
-def plotting(x, y, crtime):
+def plotting(x, y, crtime, save=None, lan='en'):
+    if lan=='en':
+        txt = ['steel temperature', 'critical temperature', 'RSET', f'Temperature: {temp_crit}°C \nTime: {crtime} s','Time, [s]','Temperature, [°C]','Steel temperature in fire']
+    elif lan=='pl':
+        txt = ['temperatura stali', 'temperatura krytyczna', 'WCBE', f'Temperatura: {temp_crit}°C \nCzas: {crtime} s','Czas, [s]','Temperatura, [°C]','Temperatura stali w czasie trwania pożaru']
     fig, ax = plt.subplots()
 
-    ax.plot(x, y, label='steel temperature')
-    ax.plot(x, len(x)*[temp_crit], color='red', linestyle='dashed', label='critical temperature')
+    
+    ax.plot(x, y, label=txt[0])
+    ax.plot(x, len(x)*[temp_crit], color='red', linestyle='dashed', label=txt[1])
     if rset:
-        ax.plot(len(y)*[rset], y, color='green', linestyle='dashed', label='RSET')
+        ax.plot(len(y)*[rset], y, color='green', linestyle='dashed', label=txt[2])
 
     if crtime:
-        ax.annotate(f'Temperature: {temp_crit}°C \nTime: {crtime} s', xy=(crtime, temp_crit), xytext=(crtime-100, temp_crit+50), arrowprops=dict(arrowstyle='-|>', fc='black'), bbox=dict(boxstyle='square', fc=(0.1,0.1,0.1,0.1)))
-    ax.set(xlabel='Time, [s]', ylabel='Temperature, [°C]', title='Steel temperature in fire')
+        ax.annotate(txt[3], xy=(crtime, temp_crit), xytext=(crtime-100, temp_crit+50), arrowprops=dict(arrowstyle='-|>', fc='black'), bbox=dict(boxstyle='square', fc=(0.1,0.1,0.1,0.1)))
+    ax.set(xlabel=txt[4], ylabel=txt[5], title=txt[6])
     ax.grid()
     ax.legend()
-    plt.show()
+    if save:
+        plt.savefig(save)
+    else:
+        plt.show()
+
+    plt.close()
 
 
 
@@ -352,6 +373,7 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--critical',type=float, help='Critical temperature (threshold value) [°C]', required=True)
     parser.add_argument('-p', '--plot', help='Plot chart of temperatures: "min", "mean", "max" or "all"', action='extend', nargs='+', type=str)
     parser.add_argument('-r', '--rset',type=float, help='Required Safe Egress Time [s]')
+    parser.add_argument('-s', '--save', default=False, help='Saving without plotting', action='store_true')
 
     args = parser.parse_args()
 
@@ -372,7 +394,8 @@ if __name__ == '__main__':
             paths = [args.xml]
         for f in paths:
             rx = ReadXML(f)
-            s = Statistics(rx.load_temps(), rx.steel_nodes, plot=args.plot)
+            savepath = f[:-4] if args.save else None
+            s = Statistics(rx.load_temps(), rx.steel_nodes, plot=args.plot, save=savepath)
             s.all_stats()
     elif args.tem:
         if path.isdir(args.tem):

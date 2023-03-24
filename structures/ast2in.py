@@ -2,7 +2,7 @@ import os
 from shutil import copyfile
 from os.path import join as pjoin
 from os import scandir
-from sys import argv
+import argparse
 
 import safir_tools as st
 import numpy as np
@@ -100,6 +100,7 @@ class Calculate4AST:
         self.calc_dir = pjoin('.', calc_dir)
         try:
             os.mkdir(self.calc_dir)
+            self.make_curvename()
         except OSError:
             print(f'{self.calc_dir} already exists')
         self.config_path = config_dir
@@ -115,6 +116,12 @@ class Calculate4AST:
         self.newtrusses = []
         self.newbeamtypes = self.infile.beamtypes.copy()
         self.newtrusstypes = self.infile.trusstypes.copy()
+
+    # write foo curve to avoid errors in safir calculations
+    def make_curvename(self):
+        with open(f'{self.calc_dir}/curvename', 'w') as file:
+            file.write('0 20\n99999 20\n')
+
 
     # find middle node of beams
     def find_middles(self, enttype='b'):
@@ -276,7 +283,7 @@ class Calculate4AST:
 
         return 0
 
-    def prepare_t2ds(self):
+    def prepare_t2ds(self, tor_suffix='-1.T0R'):
         for prof in self.newbeamtypes:
             astname = prof[0].split("_")[-1][:-4]
             try:
@@ -296,20 +303,22 @@ class Calculate4AST:
                     f.writelines(infile)
 
                 # copy torsional stiffness results
-                copyfile(pjoin(self.config_path, f'{"_".join(prof[0].split("_")[:-1])}-t.TOR'),
-                               pjoin(self.calc_dir, f'{prof[0][:-4]}-t.TOR'))
+                copyfile(pjoin(self.config_path, f'{"_".join(prof[0].split("_")[:-1])}{tor_suffix}'),
+                               pjoin(self.calc_dir, f'{prof[0][:-4]}{tor_suffix}'))
 
             except FileNotFoundError as error:
                 #print(f'{"".join(prof[0].split("_")[:-1])}.in')
                 copyfile(pjoin(self.config_path, f'{prof[0][:-4]}.in'),
                          pjoin(self.calc_dir, f'{prof[0][:-4]}.in'))
 
-                copyfile(pjoin(self.config_path, f'{prof[0][:-4]}-t.TOR'),
-                         pjoin(self.calc_dir, f'{prof[0][:-4]}-t.TOR'))
+                copyfile(pjoin(self.config_path, f'{prof[0][:-4]}{tor_suffix}'),
+                         pjoin(self.calc_dir, f'{prof[0][:-4]}{tor_suffix}'))
 
-    def run_t2d(self, safir_path):
+    def run_t2d(self, safir_path, safir_version=2019):
         self.asts.csv2safir()
-        self.prepare_t2ds()
+
+        tor = '-t.TOR' if safir_version >= 2022 else '-1.T0R'
+        self.prepare_t2ds(tor_suffix=tor)
 
         for i in scandir(self.calc_dir):
             try:
@@ -321,36 +330,72 @@ class Calculate4AST:
 
             if ext.lower() == 'in' and f'{chid}.tem' in [nbt[0] for nbt in self.newbeamtypes]:
                 st.run_safir(i.path, safir_exe_path=safir_path, fix_rlx=False)
+                insert_tor(f'{i.path[:-3]}.tem', i.path[:-3]+tor)
+    
+    def run_s3d(self, safir_path):
+        st.run_safir(f'{self.infile.chid}_ast.in', safir_exe_path=safir_path)
 
 
-def move(infile_path, vector):
-    newinfile = []
-    with open(infile_path) as f:
-        infile = f.readlines()
+### from iso2nf.py
+# insert torsion results to the first TEM file
+def insert_tor(tem_file_path, tor_file_path):
+    tem_with_tor = []
 
-    for line in infile:
-        spltd = line.split()
+    # check if torsion results already are in TEM file
+    try:
+        with open(tem_file_path) as file:
+            tem = file.read()
 
-        try:
-            if spltd[0] == 'NODE':
-                xyz = np.array([float(c) for c in spltd[2:]])
-                newinfile.append(f'\tNODE\t{spltd[1]}\t{"    ".join([str(j) for j in xyz+np.array(vector)])}\n')
-            else:
-                newinfile.append(line)
-        except IndexError:
-            newinfile.append(line)
+    except FileNotFoundError:
+        raise FileNotFoundError(f'[ERROR] There is no proper TEM file ({tem_file_path}')
 
-    with open(f'{infile_path}_moved', 'w') as f:
-        f.writelines(newinfile)
+    with open(tor_file_path) as file:
+        tor = file.read()
 
-    print(f'file {infile_path} moved with {vector} vector')
+    # try:
+    # looking for torsion results regexp in TEM file
+    if all(t in tem for t in ['GJ', 'w\n']):
+        print('[OK] Torsion results are already in the TEM')
+        tem_with_tor = tem
 
+    else:
+        # check for torsion results in T0R file
+        if all(t in tor for t in ['GJ', 'w\n']):
+            tor_indexes = [tor.index(i) for i in ['w\n', 'COLD']]
+        else:
+            raise ValueError(f'[ERROR] Torsion results not found in the {tor_file_path} file')
+
+        # insert torsion results to thermal results file
+        tem_parts = []
+        for i in ['HOT', 'CFD', 'HASEMI', 'LOCAFI']:
+            if i in tem:
+                tem_parts = tem.split(i)
+                tem_with_tor = i.join([tem_parts[0] + tor[tor_indexes[0]:tor_indexes[1]], tem_parts[1]])
+                break
+
+        if not tem_parts:
+            raise ValueError('[ERROR] Flux constraint annotation ("HOT", "CFD", "HASEMI" or "LOCAFI") not'
+                             f'found in {tem_file_path} file')
+
+
+    # pasting torsion results
+    with open(tem_file_path, 'w') as file:
+        file.writelines(tem_with_tor)
+    print('[OK] Torsion results copied to the TEM')
     return 0
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Assign AST data to BEAM elements by kowalskiw')
+    parser.add_argument('-s', '--safir', default='D:/safir.exe', help='Path to SAFIR exe', type=str)
+    parser.add_argument('-f', '--fds', help='Path to FDS input file', type=str, required=True)
+    parser.add_argument('-i', '--infile',type=str, help='SAFIR structural input file IN', required=True)
+    parser.add_argument('-v', '--safir_version', help='Major version of SAFIR you use (2019 or 2022)', default=2019, type=int)
+
+    args = parser.parse_args()
     # argv = [..., 'SAFIR mechanical input file path', 'FDS input file']
-    a = Calculate4AST(*argv[1:])
+    a = Calculate4AST(args.infile, args.fds)
     a.edit_in()
-    a.run_t2d('D:/safir.exe')
-    a.prepare_t2ds()
+    a.run_t2d(args.safir)
+    a.run_s3d(args.safir)
+
